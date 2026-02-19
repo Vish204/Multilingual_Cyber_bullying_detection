@@ -1,0 +1,32 @@
+{
+  "total_samples": 3272,
+  "train_samples": 2289,
+  "val_samples": 490,
+  "test_samples": 493,
+  "languages": 12,
+  "platforms": 4,
+  "label_distribution": {
+    "1.0": 1677,
+    "0.0": 1595
+  },
+  "language_distribution": {
+    "english": 2152,
+    "tamil": 228,
+    "malayalam": 182,
+    "gujarati": 181,
+    "kannada": 166,
+    "punjabi": 159,
+    "telugu": 119,
+    "bengali": 59,
+    "oriya": 19,
+    "sanskrit": 3,
+    "hindi": 3,
+    "marathi": 1
+  },
+  "platform_distribution": {
+    "reddit": 1944,
+    "youtube": 1041,
+    "twitter": 263,
+    "synthetic": 24
+  }
+}

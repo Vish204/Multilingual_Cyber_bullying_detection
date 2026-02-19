@@ -1,0 +1,11 @@
+{
+    "model_name": "baseline_xgboost",
+    "accuracy": 0.7139959432048681,
+    "precision": 0.6762820512820513,
+    "recall": 0.8406374501992032,
+    "f1_score": 0.7495559502664298,
+    "roc_auc": 0.773575121003589,
+    "false_positives": 101,
+    "false_negatives": 40,
+    "hindi_errors": 0
+}

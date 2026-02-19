@@ -1,0 +1,11 @@
+{
+    "model_name": "mbert",
+    "accuracy": 0.9666203059805285,
+    "precision": 0.948019801980198,
+    "recall": 0.9922279792746114,
+    "f1_score": 0.9696202531645569,
+    "roc_auc": 0.9971914920101449,
+    "false_positives": 21,
+    "false_negatives": 3,
+    "hindi_errors": 0
+}
