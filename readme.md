@@ -168,3 +168,13 @@ Output:
 - Raw data is preserved in `data/raw/`
 - All intermediate outputs can be regenerated
 - The pipeline supports complete retraining if needed
+
+## Trained models are not stored in the repository due to size (>1GB).
+
+To reproduce:
+1. Train using:
+   notebooks/experiment/02_muril_teacher_train.py
+   notebooks/experiment/03_mbert_teacher_train.py
+   notebooks/experiment/04_xlmr_teacher_train.py
+2. Models will be saved locally under:
+   models/teacher/

@@ -1,4 +1,4 @@
-# /cyberbullying-detection/start_data_collection.py
+#02_scrape_social_media.py
 
 import sys
 import os

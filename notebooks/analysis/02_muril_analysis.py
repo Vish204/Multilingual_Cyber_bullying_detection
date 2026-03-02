@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import pandas as pd
@@ -5,11 +6,15 @@ import re
 import seaborn as sns
 import matplotlib.pyplot as plt
 import json
-import os
 
 from pathlib import Path
 from datasets import Dataset
-from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score
+from sklearn.metrics import (
+    confusion_matrix,
+    classification_report,
+    roc_auc_score,
+    roc_curve
+)
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer
 
 # ===============================
@@ -36,9 +41,32 @@ print("Loading model from:", MODEL_PATH)
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+
 model.to(device)
 model.eval()
 
+# ===============================
+# MODEL SIZE LOGGING (IMPORTANT)
+# ===============================
+
+# Parameter count
+param_count = sum(p.numel() for p in model.parameters())
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+# Disk size
+def get_folder_size(path):
+    total = 0
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            fp = os.path.join(root, f)
+            total += os.path.getsize(fp)
+    return total / (1024 * 1024)  # MB
+
+model_size_mb = get_folder_size(MODEL_PATH)
+
+print("\nModel Parameters:", param_count)
+print("Trainable Parameters:", trainable_params)
+print("Model Disk Size (MB):", round(model_size_mb, 2))
 
 trainer = Trainer(model=model)
 
@@ -51,6 +79,8 @@ test_df["label"] = test_df["label"].astype(int)
 
 texts = test_df["text"].tolist()
 labels = test_df["label"].tolist()
+
+print("Test samples:", len(texts))
 
 # ===============================
 # 4. TOKENIZE
@@ -70,10 +100,11 @@ test_dataset = Dataset.from_dict({
 })
 
 # ===============================
-# 5. PREDICTIONS
+# 5. PREDICTIONS (SAFE + FAST)
 # ===============================
 
-predictions = trainer.predict(test_dataset)
+with torch.no_grad():
+    predictions = trainer.predict(test_dataset)
 
 y_true = predictions.label_ids
 y_pred = np.argmax(predictions.predictions, axis=1)
@@ -89,12 +120,18 @@ probs = torch.nn.functional.softmax(
 cm = confusion_matrix(y_true, y_pred)
 
 plt.figure(figsize=(6,5))
-sns.heatmap(cm, annot=True, fmt="d",
-            xticklabels=["non_toxic", "toxic"],
-            yticklabels=["non_toxic", "toxic"])
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    xticklabels=["non_toxic", "toxic"],
+    yticklabels=["non_toxic", "toxic"]
+)
+
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.title(f"{MODEL_NAME.upper()} Confusion Matrix")
+
 plt.savefig(RESULTS_DIR / "confusion_matrix.png")
 plt.close()
 
@@ -153,13 +190,51 @@ pd.DataFrame(hindi_errors, columns=["text"]).to_csv(
 )
 
 # ===============================
-# 10. ROC-AUC
+# 10. ROC-AUC (SAFE)
 # ===============================
 
-auc = roc_auc_score(y_true, probs[:,1])
+try:
+    auc = roc_auc_score(y_true, probs[:,1])
+except:
+    auc = 0
 
 # ===============================
-# 11. SAVE METRICS JSON
+# 11. ROC CURVE (NEW)
+# ===============================
+
+try:
+    fpr, tpr, _ = roc_curve(y_true, probs[:,1])
+
+    plt.figure(figsize=(6,5))
+    plt.plot(fpr, tpr)
+    plt.plot([0,1], [0,1], linestyle="--")
+
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"{MODEL_NAME.upper()} ROC Curve")
+
+    plt.savefig(RESULTS_DIR / "roc_curve.png")
+    plt.close()
+
+except:
+    print("ROC curve could not be generated.")
+
+# ===============================
+# 12. PROBABILITY DISTRIBUTION (NEW)
+# ===============================
+
+plt.figure(figsize=(6,5))
+sns.histplot(probs[:,1], bins=50)
+
+plt.title("Prediction Probability Distribution")
+plt.xlabel("Toxic Probability")
+plt.ylabel("Count")
+
+plt.savefig(RESULTS_DIR / "probability_distribution.png")
+plt.close()
+
+# ===============================
+# 13. SAVE METRICS JSON
 # ===============================
 
 results = {
@@ -169,6 +244,9 @@ results = {
     "recall": float(recall),
     "f1_score": float(f1),
     "roc_auc": float(auc),
+    "parameters": int(param_count),
+    "trainable_parameters": int(trainable_params),
+    "model_size_mb": float(model_size_mb),
     "false_positives": len(false_positives),
     "false_negatives": len(false_negatives),
     "hindi_errors": len(hindi_errors)

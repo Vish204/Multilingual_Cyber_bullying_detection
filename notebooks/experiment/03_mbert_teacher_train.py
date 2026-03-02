@@ -27,7 +27,6 @@ from transformers import (
 # ----------------------------
 
 warnings.filterwarnings("ignore")
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,22 +38,20 @@ DATA_DIR = PROJECT_ROOT / "data" / "processed"
 
 
 # ----------------------------
-# Custom Trainer (for class weights)
+# Custom Trainer (Class Weights)
 # ----------------------------
 
 class WeightedTrainer(Trainer):
     def __init__(self, class_weights=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.class_weights = class_weights
+        self.class_weights = class_weights.to(device)
 
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         outputs = model(**inputs)
         logits = outputs.get("logits")
 
-        loss_fct = torch.nn.CrossEntropyLoss(
-            weight=self.class_weights.to(device)
-        )
+        loss_fct = torch.nn.CrossEntropyLoss(weight=self.class_weights)
         loss = loss_fct(logits, labels)
 
         return (loss, outputs) if return_outputs else loss
@@ -67,8 +64,8 @@ class WeightedTrainer(Trainer):
 class TeacherTrainer:
 
     def __init__(self, model_name, model_folder, num_labels=2):
-        self.model_name = model_name
 
+        self.model_name = model_name
         self.model_dir = PROJECT_ROOT / "models" / "teacher" / model_folder
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
@@ -92,6 +89,7 @@ class TeacherTrainer:
     # ----------------------------
     # Dataset Preparation
     # ----------------------------
+
     def prepare_dataset(self, texts, labels):
 
         encodings = self.tokenizer(
@@ -110,6 +108,7 @@ class TeacherTrainer:
     # ----------------------------
     # Metrics
     # ----------------------------
+
     @staticmethod
     def compute_metrics(eval_pred):
 
@@ -134,6 +133,7 @@ class TeacherTrainer:
     # ----------------------------
     # Training
     # ----------------------------
+
     def train(self, train_df, val_df):
 
         logger.info("Preparing datasets...")
@@ -163,6 +163,7 @@ class TeacherTrainer:
             output_dir=str(self.model_dir),
             evaluation_strategy="epoch",
             save_strategy="epoch",
+            save_total_limit=1,
             learning_rate=2e-5,
             per_device_train_batch_size=8,
             per_device_eval_batch_size=8,
@@ -171,11 +172,11 @@ class TeacherTrainer:
             warmup_ratio=0.1,
             load_best_model_at_end=True,
             metric_for_best_model="f1",
+            greater_is_better=True,
             logging_dir=str(self.model_dir / "logs"),
             logging_steps=50,
-            save_total_limit=1,
             fp16=torch.cuda.is_available(),
-            report_to="tensorboard",
+            report_to=["tensorboard", "mlflow"],   # disable automatic reporting
         )
 
         trainer = WeightedTrainer(
@@ -192,25 +193,25 @@ class TeacherTrainer:
         logger.info("Starting training...")
         trainer.train()
 
-        # Validation metrics
-        metrics = trainer.evaluate()
-        mlflow.log_metrics(metrics)
+        logger.info("Saving final BEST model...")
 
-        # Save model to MLflow
-        mlflow.pytorch.log_model(self.model, "model")
-
-        # Save local model
         final_model_path = self.model_dir / "final_model"
         trainer.save_model(str(final_model_path))
         self.tokenizer.save_pretrained(str(final_model_path))
+        trainer.save_state()
 
-        logger.info(f"✓ Model saved to {final_model_path}")
+        # Save model size
+        model_size = sum(p.numel() for p in self.model.parameters())
+        mlflow.log_param("model_parameters", model_size)
+
+        logger.info(f"Model parameters: {model_size}")
 
         return trainer
 
     # ----------------------------
     # Test Evaluation
     # ----------------------------
+
     def evaluate_test(self, trainer, test_df):
 
         logger.info("Evaluating on TEST set...")
@@ -226,19 +227,14 @@ class TeacherTrainer:
         with open(metrics_path, "w") as f:
             json.dump(metrics, f, indent=4)
 
-        logger.info("Test Metrics:")
-        for k, v in metrics.items():
-            logger.info(f"{k}: {v:.4f}")
-
-        logger.info(f"✓ Test metrics saved to {metrics_path}")
-
-        # Log test metrics
         mlflow.log_metrics({
             "test_accuracy": metrics["eval_accuracy"],
             "test_precision": metrics["eval_precision"],
             "test_recall": metrics["eval_recall"],
             "test_f1": metrics["eval_f1"]
         })
+
+        logger.info(f"✓ Test metrics saved to {metrics_path}")
 
 
 # ----------------------------
@@ -259,38 +255,25 @@ def main():
     val_df["label"] = val_df["label"].astype(int)
     test_df["label"] = test_df["label"].astype(int)
 
-    logger.info(f"Train samples: {len(train_df)}")
-    logger.info(f"Val samples: {len(val_df)}")
-    logger.info(f"Test samples: {len(test_df)}")
-
-    # -----------------------------------
-    # CHANGE MODEL HERE ONLY
-    # -----------------------------------
-
     MODEL_NAME = "bert-base-multilingual-cased"
     MODEL_FOLDER = "mbert"
-
-    trainer_obj = TeacherTrainer(
-        model_name=MODEL_NAME,
-        model_folder=MODEL_FOLDER
-    )
-
-    # -----------------------------------
-    # MLflow Run (CORRECT PLACE)
-    # -----------------------------------
 
     mlflow.set_experiment("cyberbullying_teacher_models")
 
     with mlflow.start_run(run_name=MODEL_NAME):
 
-        mlflow.log_param("model", MODEL_NAME)
+        mlflow.log_param("model_name", MODEL_NAME)
         mlflow.log_param("epochs", 6)
         mlflow.log_param("batch_size", 8)
-        mlflow.log_param("lr", 2e-5)
-
+        mlflow.log_param("learning_rate", 2e-5)
         mlflow.log_param("train_samples", len(train_df))
         mlflow.log_param("val_samples", len(val_df))
         mlflow.log_param("test_samples", len(test_df))
+
+        trainer_obj = TeacherTrainer(
+            model_name=MODEL_NAME,
+            model_folder=MODEL_FOLDER
+        )
 
         trainer = trainer_obj.train(train_df, val_df)
         trainer_obj.evaluate_test(trainer, test_df)

@@ -16,6 +16,7 @@ MODEL_PATHS = {
     "MuRIL": os.path.join(BASE_PATH, "muril", "metrics.json"),
     "mBERT": os.path.join(BASE_PATH, "mbert", "metrics.json"),
     "XLM-R": os.path.join(BASE_PATH, "xlmr", "metrics.json"),
+    "MTKD_XGBoost": os.path.join(BASE_PATH, "mtkd_xgboost", "metrics.json"),  # ✅ ADDED
 }
 
 OUTPUT_DIR = os.path.join(BASE_PATH, "model_comparison")
@@ -49,11 +50,11 @@ for model_name, path in MODEL_PATHS.items():
         "Model": model_name,
         "Params(M)": params_m,
         "Size(MB)": float(metrics.get("model_size_mb", 0)),
-        "Accuracy": metrics.get("accuracy", 0),
-        "Precision": metrics.get("precision", 0),
-        "Recall": metrics.get("recall", 0),
-        "F1-Score": metrics.get("f1_score", 0),
-        "ROC-AUC": metrics.get("roc_auc", 0),
+        "Accuracy": float(metrics.get("accuracy", 0)),
+        "Precision": float(metrics.get("precision", 0)),
+        "Recall": float(metrics.get("recall", 0)),
+        "F1-Score": float(metrics.get("f1_score", 0)),
+        "ROC-AUC": float(metrics.get("roc_auc", 0)),
     })
 
 df = pd.DataFrame(results)
@@ -84,7 +85,7 @@ print("\nModel Comparison:\n")
 print(df)
 
 # ===============================
-# 5️⃣ Performance Plot (Paper Standard)
+# 5️⃣ Performance Plot
 # ===============================
 
 metrics_to_plot = ["Accuracy", "F1-Score", "ROC-AUC"]
@@ -93,7 +94,7 @@ ax = df.plot(
     x="Model",
     y=metrics_to_plot,
     kind="bar",
-    figsize=(10,6)
+    figsize=(10, 6)
 )
 
 plt.title("Model Performance Comparison")
@@ -102,7 +103,6 @@ plt.ylabel("Score")
 plt.ylim(0, 1)
 plt.xticks(rotation=0)
 plt.grid(True)
-
 plt.tight_layout()
 
 plt.savefig(
@@ -112,14 +112,14 @@ plt.savefig(
 plt.close()
 
 # ===============================
-# 6️⃣ Model Size Plot (NEW – IMPORTANT)
+# 6️⃣ Model Size Plot
 # ===============================
 
 ax = df.plot(
     x="Model",
     y="Size(MB)",
     kind="bar",
-    figsize=(10,6)
+    figsize=(10, 6)
 )
 
 plt.title("Model Size Comparison")
@@ -127,7 +127,6 @@ plt.xlabel("Models")
 plt.ylabel("Size (MB)")
 plt.xticks(rotation=0)
 plt.grid(True)
-
 plt.tight_layout()
 
 plt.savefig(

@@ -175,7 +175,7 @@ class TeacherTrainer:
             logging_steps=50,
             save_total_limit=1,
             fp16=torch.cuda.is_available(),
-            report_to="tensorboard",
+            report_to=["tensorboard", "mlflow"],
         )
 
         trainer = WeightedTrainer(
@@ -196,8 +196,7 @@ class TeacherTrainer:
         metrics = trainer.evaluate()
         mlflow.log_metrics(metrics)
 
-        # Save model to MLflow
-        mlflow.pytorch.log_model(self.model, "model")
+        
 
         # Save local model
         final_model_path = self.model_dir / "final_model"

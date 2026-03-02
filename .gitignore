@@ -51,3 +51,8 @@ Thumbs.db
 # =========================
 .vscode/
 .idea/
+
+# =========================
+# Analysis Outputs (DO NOT TRACK)
+# =========================
+notebooks/analysis_results/
