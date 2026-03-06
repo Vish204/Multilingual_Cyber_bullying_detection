@@ -85,3 +85,8 @@ The module simulates a real system but does not serve an API.
 Probabilities from individual models are not stored persistently unless required for analysis.
 Designed to validate system behavior before moving to Phase 4 — Final System Integration.
 Can be extended to batch inference or live deployment with minimal changes.
+
+## Output 
+![alt text](image-2.png)
+![alt text](image-1.png)
+![alt text](image.png)
