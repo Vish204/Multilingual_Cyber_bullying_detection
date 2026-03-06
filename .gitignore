@@ -39,6 +39,8 @@ events.out.tfevents*
 data/raw/
 data/debug/
 data/probs/
+data/emotion/
+data/sarcasm/
 
 # =========================
 # OS
