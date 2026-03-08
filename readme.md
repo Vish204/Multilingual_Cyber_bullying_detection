@@ -111,6 +111,7 @@ requirements.txt
 The pipeline **must be executed in the following order.**
 
 ---
+# Phase 1 – Data collection and preprocessing
 
 # 1. Data Collection
 
@@ -212,6 +213,7 @@ test.csv
 ```
 
 ---
+# Phase 2 – Model Training
 
 # 4. Teacher Model Training
 
