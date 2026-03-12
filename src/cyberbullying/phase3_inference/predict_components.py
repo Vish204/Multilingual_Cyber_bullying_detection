@@ -5,6 +5,7 @@ import json
 import re
 from pathlib import Path
 from textblob import TextBlob
+from scipy.sparse import hstack
 
 # ------------------------------------------------
 # Paths
@@ -12,10 +13,11 @@ from textblob import TextBlob
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
-VOCAB_PATH = BASE_DIR / "models" / "sarcasm" / "vocab.json"
+KEYWORDS_DIR = BASE_DIR / "resources/keywords/multilingual_keywords"
+
+VOCAB_PATH = BASE_DIR / "models/sarcasm/vocab.json"
 
 MAX_LEN = 50
-
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ------------------------------------------------
@@ -29,24 +31,21 @@ PAD_ID = SARCASM_VOCAB["<PAD>"]
 UNK_ID = SARCASM_VOCAB["<UNK>"]
 
 # ------------------------------------------------
-# Emotion category mapping
+# Load multilingual keywords
 # ------------------------------------------------
 
-AGGRESSION_EMOTIONS = ["anger", "annoyance", "disgust", "disapproval"]
+keywords = set()
 
-DISTRESS_EMOTIONS = [
-    "sadness",
-    "fear",
-    "embarrassment",
-    "remorse",
-    "nervousness",
-    "grief"
-]
+for file in KEYWORDS_DIR.glob("*.json"):
 
-NEUTRAL_EMOTION = ["neutral"]
+    with open(file, encoding="utf-8") as f:
+        data = json.load(f)
+
+    for kw in data["keywords"]:
+        keywords.add(kw.lower())
 
 # ------------------------------------------------
-# Handcrafted features (same as training)
+# Handcrafted features
 # ------------------------------------------------
 
 def stylometric_features(text):
@@ -67,10 +66,10 @@ def sentiment_polarity(text):
 
 def code_mixing_index(text):
 
-    eng_words = sum(1 for w in text.split() if re.match(r'[a-zA-Z]+', w))
-    total_words = max(1, len(text.split()))
+    eng = sum(1 for w in text.split() if re.match(r"[a-zA-Z]+", w))
+    total = max(1, len(text.split()))
 
-    return eng_words / total_words
+    return eng / total
 
 
 def extract_handcrafted_features(text):
@@ -86,26 +85,20 @@ def extract_handcrafted_features(text):
 
 
 # ------------------------------------------------
-# Teacher embeddings
+# Keyword features
 # ------------------------------------------------
 
-def get_teacher_embedding(text, tokenizer, model):
+def keyword_features(text):
 
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-        max_length=128
-    ).to(DEVICE)
+    words = text.lower().split()
 
-    with torch.no_grad():
+    count = sum(1 for w in words if w in keywords)
 
-        outputs = model(**inputs)
+    present = 1 if count > 0 else 0
 
-        embedding = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
+    ratio = count / max(1, len(words))
 
-    return embedding
+    return np.array([present, count, ratio])
 
 
 # ------------------------------------------------
@@ -127,55 +120,45 @@ def encode_sarcasm_text(text):
 
 
 # ------------------------------------------------
-# MTKD prediction
+# Student_V2 prediction
 # ------------------------------------------------
 
-def predict_mtkd(text, models):
+def predict_cyberbullying(text, models):
 
-    mtkd_model = models["mtkd"]
-    vectorizer = models["vectorizer"]
+    student = models["student"]
+    word_vec = models["word_vectorizer"]
+    char_vec = models["char_vectorizer"]
     scaler = models["scaler"]
 
-    teachers = models["teachers"]
+    text = str(text).lower()
 
-    clean_text = str(text).lower()
+    # Word TF-IDF
+    X_word = word_vec.transform([text])
 
-    # TF-IDF
-    tfidf_vec = vectorizer.transform([clean_text]).toarray()
+    # Char TF-IDF
+    X_char = char_vec.transform([text])
 
-    # Handcrafted features
-    hand_feats = extract_handcrafted_features(clean_text).reshape(1, -1)
+    # Handcrafted
+    X_hand = extract_handcrafted_features(text).reshape(1, -1)
 
-    # Teacher embeddings
-    emb_mbert = get_teacher_embedding(
-        clean_text,
-        teachers["mbert_tokenizer"],
-        teachers["mbert_model"]
-    )
+    # Keyword
+    X_key = keyword_features(text).reshape(1, -1)
 
-    emb_xlmr = get_teacher_embedding(
-        clean_text,
-        teachers["xlmr_tokenizer"],
-        teachers["xlmr_model"]
-    )
+    X_numeric = np.hstack([X_hand, X_key])
 
-    emb_muril = get_teacher_embedding(
-        clean_text,
-        teachers["muril_tokenizer"],
-        teachers["muril_model"]
-    )
+    # Scale numeric
+    X_numeric = scaler.transform(X_numeric)
 
-    teacher_emb = np.hstack([emb_mbert, emb_xlmr, emb_muril])
+    # Combine
+    X = hstack([X_word, X_char, X_numeric])
 
-    # Combine features
-    X = np.hstack([teacher_emb, hand_feats, tfidf_vec])
+    # Predict
+    p_cb = student.predict(X)[0]
 
-    # Scale
-    X = scaler.transform(X)
+    # clip to probability range
+    p_cb = float(np.clip(p_cb, 0, 1))
 
-    p_cb = mtkd_model.predict_proba(X)[0][1]
-
-    return float(p_cb)
+    return p_cb
 
 
 # ------------------------------------------------
@@ -187,7 +170,6 @@ def predict_sarcasm(text, sarcasm_model):
     input_ids = encode_sarcasm_text(text)
 
     with torch.no_grad():
-
         prob = sarcasm_model(input_ids).item()
 
     return float(prob)
@@ -207,19 +189,19 @@ def predict_emotion(text, emotion_tokenizer, emotion_model):
     )
 
     with torch.no_grad():
+
         outputs = emotion_model(**inputs)
+
         logits = outputs.logits.squeeze(0)
 
         probs = torch.softmax(logits, dim=0).cpu().numpy()
 
-    # class mapping
     p_neutral = probs[0]
     p_aggression = probs[1]
     p_distress = probs[2]
 
-    # emotion signal used for fusion
     p_emotion = float(p_aggression + p_distress)
-    print(f"Emotion probabilities - Neutral: {p_neutral:.4f}, Aggression: {p_aggression:.4f}, Distress: {p_distress:.4f}")
+
     return p_emotion
 
 
@@ -238,7 +220,7 @@ def run_component_predictions(text_list, models):
 
     for text in text_list:
 
-        p_cb = predict_mtkd(text, models)
+        p_cb = predict_cyberbullying(text, models)
 
         p_sarcasm = predict_sarcasm(text, sarcasm_model)
 

@@ -1,76 +1,66 @@
-import os
 import joblib
 import numpy as np
 import pandas as pd
-import torch
 import re
+import json
 
 from pathlib import Path
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModel
+from scipy.sparse import hstack, csr_matrix
 from textblob import TextBlob
 
-# ----------------------------
-# Configuration
-# ----------------------------
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 64
+# =========================================================
+# CONFIG
+# =========================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "test_data.csv"
 
-MODEL_DIR = PROJECT_ROOT / "models" / "student"
-TEACHER_DIR = PROJECT_ROOT / "models" / "teacher"
+MODEL_DIR = PROJECT_ROOT / "models" / "student_v2"
 
-OUTPUT_DIR = PROJECT_ROOT / "notebooks" /"analysis_results" / "fusion"
+KEYWORDS_DIR = PROJECT_ROOT / "resources" / "keywords" / "multilingual_keywords"
+
+OUTPUT_DIR = PROJECT_ROOT / "notebooks" / "analysis_results" / "fusion"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ----------------------------
-# Load Models
-# ----------------------------
 
-print("Loading student model...")
+# =========================================================
+# LOAD MODEL ARTIFACTS
+# =========================================================
 
-student_model = joblib.load(MODEL_DIR / "mtkd_student_xgb.pkl")
+print("Loading Student V2 artifacts...")
+
+student_model = joblib.load(MODEL_DIR / "student_xgb_model.pkl")
+
+word_vectorizer = joblib.load(MODEL_DIR / "word_tfidf.pkl")
+char_vectorizer = joblib.load(MODEL_DIR / "char_tfidf.pkl")
+
 scaler = joblib.load(MODEL_DIR / "scaler.pkl")
-tfidf_vectorizer = joblib.load(MODEL_DIR / "tfidf_vectorizer.pkl")
 
-# ----------------------------
-# Teacher Models
-# ----------------------------
 
-teacher_models = [
-    {
-        "name": "mbert",
-        "path": TEACHER_DIR / "mbert" / "final_model"
-    },
-    {
-        "name": "xlmr",
-        "path": TEACHER_DIR / "xlmr" / "final_model"
-    },
-    {
-        "name": "muril",
-        "path": TEACHER_DIR / "muril" / "final_model"
-    }
-]
+# =========================================================
+# LOAD KEYWORDS
+# =========================================================
 
-loaded_teachers = []
+print("Loading keyword dictionaries...")
 
-for teacher in teacher_models:
+keywords = set()
 
-    print(f"Loading teacher: {teacher['name']}")
+for file in KEYWORDS_DIR.glob("*.json"):
 
-    tokenizer = AutoTokenizer.from_pretrained(teacher["path"])
-    model = AutoModel.from_pretrained(teacher["path"]).to(DEVICE)
-    model.eval()
+    with open(file, encoding="utf-8") as f:
 
-    loaded_teachers.append((tokenizer, model))
+        data = json.load(f)
 
-# ----------------------------
-# Feature Functions
-# ----------------------------
+    for kw in data["keywords"]:
+
+        keywords.add(kw.lower())
+
+
+# =========================================================
+# FEATURE FUNCTIONS
+# =========================================================
 
 def stylometric_features(text):
 
@@ -90,133 +80,134 @@ def sentiment_polarity(text):
 
 def code_mixing_index(text):
 
-    eng_words = sum(1 for w in text.split() if re.match(r'[a-zA-Z]+', w))
-    total_words = max(1, len(text.split()))
-    return eng_words / total_words
+    eng = sum(1 for w in text.split() if re.match(r"[a-zA-Z]+", w))
+
+    total = max(1, len(text.split()))
+
+    return eng / total
 
 
 def extract_handcrafted_features(texts):
 
-    features = []
+    feats = []
 
     for text in texts:
 
-        feats = [
+        f = [
             sentiment_polarity(text),
             code_mixing_index(text)
         ]
 
-        feats.extend(stylometric_features(text))
-        features.append(feats)
+        f.extend(stylometric_features(text))
 
-    return np.array(features)
+        feats.append(f)
+
+    return np.array(feats)
 
 
-# ----------------------------
-# Teacher Embeddings
-# ----------------------------
+# =========================================================
+# KEYWORD FEATURES
+# =========================================================
 
-def get_teacher_embeddings(tokenizer, model, texts):
+def keyword_features(texts):
 
-    all_embeddings = []
+    feats = []
 
-    with torch.no_grad():
+    for text in texts:
 
-        for i in tqdm(range(0, len(texts), BATCH_SIZE), desc="Encoding"):
+        words = text.lower().split()
 
-            batch = texts[i:i+BATCH_SIZE]
+        count = sum(1 for w in words if w in keywords)
 
-            enc = tokenizer(
-                batch,
-                padding=True,
-                truncation=True,
-                max_length=128,
-                return_tensors="pt"
-            ).to(DEVICE)
+        present = 1 if count > 0 else 0
 
-            outputs = model(**enc)
+        ratio = count / max(1, len(words))
 
-            emb = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
+        feats.append([present, count, ratio])
 
-            all_embeddings.append(emb)
+    return np.array(feats)
 
-    return np.vstack(all_embeddings)
 
-# ----------------------------
-# Load Dataset
-# ----------------------------
+# =========================================================
+# LOAD DATASET
+# =========================================================
 
-print("\nLoading test dataset...")
+print("Loading test dataset...")
 
 df = pd.read_csv(DATA_PATH)
 
 texts = df["text"].astype(str).tolist()
 labels = df["label"].values
 
-print(f"Test samples: {len(texts)}")
+print("Samples:", len(texts))
 
-# ----------------------------
-# TF-IDF Features
-# ----------------------------
 
-print("\nGenerating TF-IDF features...")
+# =========================================================
+# TF-IDF FEATURES
+# =========================================================
 
-X_tfidf = tfidf_vectorizer.transform(texts).toarray()
+print("Generating TF-IDF features...")
 
-# ----------------------------
-# Handcrafted Features
-# ----------------------------
+X_word = word_vectorizer.transform(texts)
 
-print("Generating handcrafted features...")
+X_char = char_vectorizer.transform(texts)
+
+
+# =========================================================
+# NUMERIC FEATURES
+# =========================================================
+
+print("Extracting numeric features...")
 
 X_hand = extract_handcrafted_features(texts)
 
-# ----------------------------
-# Teacher Embeddings
-# ----------------------------
+X_key = keyword_features(texts)
 
-teacher_embeddings = []
+X_numeric = np.hstack([X_hand, X_key])
 
-for tokenizer, model in loaded_teachers:
+X_numeric = scaler.transform(X_numeric)
 
-    emb = get_teacher_embeddings(tokenizer, model, texts)
+X_numeric = csr_matrix(X_numeric)
 
-    teacher_embeddings.append(emb)
 
-X_teacher = np.hstack(teacher_embeddings)
+# =========================================================
+# COMBINE FEATURES
+# =========================================================
 
-# ----------------------------
-# Combine Features
-# ----------------------------
+print("Combining features...")
 
-X = np.hstack([X_teacher, X_hand, X_tfidf])
+X = hstack([
 
-# ----------------------------
-# Scaling
-# ----------------------------
+    X_word,
+    X_char,
+    X_numeric
 
-X = scaler.transform(X)
+])
 
-# ----------------------------
-# Predict Probabilities
-# ----------------------------
 
-print("\nGenerating MTKD probabilities...")
+# =========================================================
+# PREDICT PROBABILITIES
+# =========================================================
 
-probs = student_model.predict_proba(X)[:, 1]
+print("Generating Student V2 probabilities...")
 
-# ----------------------------
-# Save Output
-# ----------------------------
+probs = student_model.predict(X)
+
+
+# =========================================================
+# SAVE OUTPUT
+# =========================================================
 
 output_df = pd.DataFrame({
+
     "text": texts,
     "label": labels,
     "P_cb": probs
+
 })
 
-output_path = OUTPUT_DIR / "mtkd_probs.csv"
+output_path = OUTPUT_DIR / "mtkd_v2_probs.csv"
 
 output_df.to_csv(output_path, index=False)
 
-print(f"\nSaved MTKD probabilities to: {output_path}")
+print("\nSaved probabilities to:", output_path)

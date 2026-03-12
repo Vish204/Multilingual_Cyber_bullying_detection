@@ -1,6 +1,6 @@
 import joblib
 import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModel
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from pathlib import Path
 import sys
 
@@ -21,15 +21,11 @@ BASE_DIR = PROJECT_ROOT
 # Model Paths
 # ------------------------------------------------
 
-# Student
-MTKD_MODEL_PATH = BASE_DIR / "models" / "student" / "mtkd_student_xgb.pkl"
-TFIDF_PATH = BASE_DIR / "models" / "student" / "tfidf_vectorizer.pkl"
-SCALER_PATH = BASE_DIR / "models" / "student" / "scaler.pkl"
-
-# Teachers
-MBERT_PATH = BASE_DIR / "models" / "teacher" / "mbert" / "final_model"
-XLMR_PATH = BASE_DIR / "models" / "teacher" / "xlmr" / "final_model"
-MURIL_PATH = BASE_DIR / "models" / "teacher" / "muril" / "final_model"
+# Student V2
+STUDENT_MODEL_PATH = BASE_DIR / "models" / "student_v2" / "student_xgb_model.pkl"
+WORD_TFIDF_PATH = BASE_DIR / "models" / "student_v2" / "word_tfidf.pkl"
+CHAR_TFIDF_PATH = BASE_DIR / "models" / "student_v2" / "char_tfidf.pkl"
+SCALER_PATH = BASE_DIR / "models" / "student_v2" / "scaler.pkl"
 
 # Sarcasm
 SARCASM_MODEL_PATH = BASE_DIR / "models" / "sarcasm" / "best_model.pt"
@@ -40,46 +36,22 @@ EMOTION_MODEL_PATH = BASE_DIR / "models" / "emotion" / "final"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ------------------------------------------------
-# Load MTKD Student
+# Load Student Model
 # ------------------------------------------------
 
-def load_mtkd_model():
+def load_student_model():
 
-    print("Loading MTKD XGBoost student model...")
+    print("Loading Student_V2 model...")
 
-    mtkd_model = joblib.load(MTKD_MODEL_PATH)
-    vectorizer = joblib.load(TFIDF_PATH)
+    student_model = joblib.load(STUDENT_MODEL_PATH)
+
+    word_vectorizer = joblib.load(WORD_TFIDF_PATH)
+
+    char_vectorizer = joblib.load(CHAR_TFIDF_PATH)
+
     scaler = joblib.load(SCALER_PATH)
 
-    return mtkd_model, vectorizer, scaler
-
-
-# ------------------------------------------------
-# Load Teacher Models
-# ------------------------------------------------
-
-def load_teacher_models():
-
-    print("Loading teacher models...")
-
-    teachers = {}
-
-    # mBERT
-    teachers["mbert_tokenizer"] = AutoTokenizer.from_pretrained(MBERT_PATH)
-    teachers["mbert_model"] = AutoModel.from_pretrained(MBERT_PATH).to(DEVICE)
-    teachers["mbert_model"].eval()
-
-    # XLMR
-    teachers["xlmr_tokenizer"] = AutoTokenizer.from_pretrained(XLMR_PATH)
-    teachers["xlmr_model"] = AutoModel.from_pretrained(XLMR_PATH).to(DEVICE)
-    teachers["xlmr_model"].eval()
-
-    # MuRIL
-    teachers["muril_tokenizer"] = AutoTokenizer.from_pretrained(MURIL_PATH)
-    teachers["muril_model"] = AutoModel.from_pretrained(MURIL_PATH).to(DEVICE)
-    teachers["muril_model"].eval()
-
-    return teachers
+    return student_model, word_vectorizer, char_vectorizer, scaler
 
 
 # ------------------------------------------------
@@ -88,7 +60,7 @@ def load_teacher_models():
 
 def load_sarcasm_model():
 
-    print("Loading Sarcasm BiGRU model...")
+    print("Loading Sarcasm model...")
 
     sarcasm_model = torch.load(SARCASM_MODEL_PATH, map_location="cpu")
 
@@ -103,7 +75,7 @@ def load_sarcasm_model():
 
 def load_emotion_model():
 
-    print("Loading Emotion BERT model...")
+    print("Loading Emotion model...")
 
     tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_PATH)
 
@@ -122,9 +94,7 @@ def load_emotion_model():
 
 def load_all_models():
 
-    mtkd_model, vectorizer, scaler = load_mtkd_model()
-
-    teacher_models = load_teacher_models()
+    student_model, word_vec, char_vec, scaler = load_student_model()
 
     sarcasm_model = load_sarcasm_model()
 
@@ -133,15 +103,19 @@ def load_all_models():
     print("All models loaded successfully!")
 
     return {
-        "mtkd": mtkd_model,
-        "vectorizer": vectorizer,
-        "scaler": scaler,
 
-        "teachers": teacher_models,
+        "student": student_model,
+
+        "word_vectorizer": word_vec,
+
+        "char_vectorizer": char_vec,
+
+        "scaler": scaler,
 
         "sarcasm": sarcasm_model,
 
         "emotion_tokenizer": emotion_tokenizer,
+
         "emotion_model": emotion_model
     }
 

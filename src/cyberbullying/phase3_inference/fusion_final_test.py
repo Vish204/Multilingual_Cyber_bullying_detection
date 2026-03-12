@@ -29,13 +29,13 @@ while True:
         p_emotion
     )
 
-    prediction = "CYBERBULLYING" if fusion_score > 0.5 else "NORMAL"
+    prediction = "CYBERBULLYING" if fusion_score >= 0.5 else "NORMAL"
 
-    if fusion_score > 0.8:
+    if fusion_score >= 0.8:
         severity = "SEVERE"
-    elif fusion_score > 0.6:
+    elif fusion_score >= 0.65:
         severity = "MODERATE"
-    elif fusion_score > 0.4:
+    elif fusion_score >= 0.5:
         severity = "MILD"
     else:
         severity = "NONE"

@@ -14,3 +14,10 @@ This folder contains all datasets used in the project, organized by stage.
 
 - `probs/`  
   Reserved for storing model prediction probabilities or inference outputs.
+
+- `emotion/`  
+    Dataset for emotion model from goEmotion
+
+- `saracsm/`  
+    Dataset for saracasm model, from reddit (kaggle) - twitter 
+

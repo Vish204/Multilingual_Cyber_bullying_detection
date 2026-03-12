@@ -76,7 +76,7 @@ fusion_final_test.py allows users to input text and see real-time predictions.
 ## Fusion Formula
 
 The same fusion formula from Phase 3.5 is applied:
-fusion_score = 0.60 * p_cb + 0.25 * p_sar + 0.15 * p_emo
+fusion_score = 0.50 * p_cb + 0.3 * p_sar + 0.2 * p_emo
 
 
 ## Notes

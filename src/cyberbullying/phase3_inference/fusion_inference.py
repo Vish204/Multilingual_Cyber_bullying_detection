@@ -20,6 +20,8 @@ def compute_fusion_score(p_cb, p_sarcasm, p_emotion):
         0.2 * p_emotion
     )
 
+    fusion_score = max(0.0, min(1.0, fusion_score))
+    
     return fusion_score
 
 

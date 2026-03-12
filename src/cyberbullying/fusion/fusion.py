@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 FUSION_DIR = PROJECT_ROOT / "notebooks" /"analysis_results" / "fusion"
 
-MTKD_PATH = FUSION_DIR / "mtkd_probs.csv"
+MTKD_PATH = FUSION_DIR / "mtkd_v2_probs.csv"
 SARCASM_PATH = FUSION_DIR / "sarcasm_probs.csv"
 EMOTION_PATH = FUSION_DIR / "emotion_probs.csv"
 
