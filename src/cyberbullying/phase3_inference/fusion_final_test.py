@@ -12,10 +12,14 @@ print("System ready.\n")
 
 while True:
 
-    text = input("Enter text (type 'exit' to stop): ")
+    text = input("Enter text (type 'exit' to stop): ").strip()
 
     if text.lower() == "exit":
         break
+
+    if len(text) == 0:
+        print("Please enter some text.\n")
+        continue
 
     df = run_component_predictions([text], models)
 

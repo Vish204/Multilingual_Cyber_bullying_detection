@@ -5,6 +5,7 @@ import json
 import re
 from pathlib import Path
 import os
+import unicodedata
 
 from sklearn.metrics import (
     classification_report,
@@ -31,8 +32,6 @@ TEST_PATH = PROJECT_ROOT / "data/processed/test_data.csv"
 
 MODEL_DIR = PROJECT_ROOT / "models/student_v2"
 
-KEYWORDS_DIR = PROJECT_ROOT / "resources/keywords/multilingual_keywords"
-
 RESULT_DIR = PROJECT_ROOT / "notebooks/analysis_results/student_v2"
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -46,8 +45,23 @@ print("Loading test dataset...")
 test_df = pd.read_csv(TEST_PATH)
 
 texts = test_df["text"].astype(str).tolist()
-# y_true = test_df["label"].values
 y_true = test_df["label"].astype(int).values
+
+
+# =========================================================
+# GOOGLE MULTILINGUAL TRICK
+# Unicode Normalization
+# =========================================================
+
+def normalize_text(text):
+
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+
+    return text
+
+
+texts = [normalize_text(t) for t in texts]
 
 
 # =========================================================
@@ -66,14 +80,14 @@ scaler = joblib.load(MODEL_DIR / "scaler.pkl")
 # LOAD KEYWORDS
 # =========================================================
 
-keywords = set()
+print("Loading keywords...")
 
-for file in KEYWORDS_DIR.glob("*.json"):
-    with open(file, encoding="utf-8") as f:
-        data = json.load(f)
+keywords = joblib.load(MODEL_DIR / "keywords.pkl")
 
-    for kw in data["keywords"]:
-        keywords.add(kw.lower())
+keyword_pattern = re.compile(
+    r"\b(" + "|".join(map(re.escape, keywords)) + r")\b",
+    re.IGNORECASE
+)
 
 
 # =========================================================
@@ -122,7 +136,7 @@ def extract_handcrafted_features(texts):
 
 
 # =========================================================
-# KEYWORD FEATURES
+# KEYWORD FEATURES (Regex Matching)
 # =========================================================
 
 def keyword_features(texts):
@@ -131,13 +145,13 @@ def keyword_features(texts):
 
     for text in texts:
 
-        words = text.lower().split()
+        matches = keyword_pattern.findall(text)
 
-        count = sum(1 for w in words if w in keywords)
+        count = len(matches)
 
         present = 1 if count > 0 else 0
 
-        ratio = count / max(1, len(words))
+        ratio = count / max(1, len(text.split()))
 
         feats.append([present, count, ratio])
 
@@ -194,6 +208,8 @@ y_prob = student.predict(X_test)
 y_pred = (y_prob >= 0.5).astype(int)
 
 print("Unique predictions:", np.unique(y_pred))
+
+
 # =========================================================
 # METRICS
 # =========================================================
@@ -213,6 +229,7 @@ false_pos = int(((y_pred == 1) & (y_true == 0)).sum())
 false_neg = int(((y_pred == 0) & (y_true == 1)).sum())
 
 model_size_mb = os.path.getsize(MODEL_DIR / "student_xgb_model.pkl") / (1024*1024)
+
 
 # =========================================================
 # SAVE METRICS

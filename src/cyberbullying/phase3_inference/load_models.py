@@ -3,6 +3,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from pathlib import Path
 import sys
+import re
 
 # ------------------------------------------------
 # Path Setup
@@ -26,6 +27,7 @@ STUDENT_MODEL_PATH = BASE_DIR / "models" / "student_v2" / "student_xgb_model.pkl
 WORD_TFIDF_PATH = BASE_DIR / "models" / "student_v2" / "word_tfidf.pkl"
 CHAR_TFIDF_PATH = BASE_DIR / "models" / "student_v2" / "char_tfidf.pkl"
 SCALER_PATH = BASE_DIR / "models" / "student_v2" / "scaler.pkl"
+KEYWORDS_PATH = BASE_DIR / "models" / "student_v2" / "keywords.pkl"
 
 # Sarcasm
 SARCASM_MODEL_PATH = BASE_DIR / "models" / "sarcasm" / "best_model.pt"
@@ -39,6 +41,17 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # Load Student Model
 # ------------------------------------------------
 
+def build_keyword_patterns(keywords):
+
+    patterns = []
+
+    for kw in keywords:
+
+        pattern = r"\b" + re.escape(kw) + r"\b"
+        patterns.append(re.compile(pattern, re.IGNORECASE))
+
+    return patterns
+
 def load_student_model():
 
     print("Loading Student_V2 model...")
@@ -51,7 +64,11 @@ def load_student_model():
 
     scaler = joblib.load(SCALER_PATH)
 
-    return student_model, word_vectorizer, char_vectorizer, scaler
+    keywords = joblib.load(KEYWORDS_PATH)
+
+    keyword_patterns = build_keyword_patterns(keywords)
+
+    return student_model, word_vectorizer, char_vectorizer, scaler, keyword_patterns
 
 
 # ------------------------------------------------
@@ -94,7 +111,7 @@ def load_emotion_model():
 
 def load_all_models():
 
-    student_model, word_vec, char_vec, scaler = load_student_model()
+    student_model, word_vec, char_vec, scaler, keyword_patterns = load_student_model()
 
     sarcasm_model = load_sarcasm_model()
 
@@ -112,13 +129,14 @@ def load_all_models():
 
         "scaler": scaler,
 
+        "keyword_patterns": keyword_patterns,
+
         "sarcasm": sarcasm_model,
 
         "emotion_tokenizer": emotion_tokenizer,
 
         "emotion_model": emotion_model
-    }
-
+}
 
 # ------------------------------------------------
 # Standalone Test

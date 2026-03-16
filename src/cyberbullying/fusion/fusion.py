@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 # ------------------------
@@ -7,13 +8,14 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-FUSION_DIR = PROJECT_ROOT / "notebooks" /"analysis_results" / "fusion"
+FUSION_DIR = PROJECT_ROOT / "notebooks" / "analysis_results" / "fusion"
 
 MTKD_PATH = FUSION_DIR / "mtkd_v2_probs.csv"
 SARCASM_PATH = FUSION_DIR / "sarcasm_probs.csv"
 EMOTION_PATH = FUSION_DIR / "emotion_probs.csv"
 
 OUTPUT_PATH = FUSION_DIR / "fusion_predictions.csv"
+
 
 # ------------------------
 # Load probability files
@@ -29,16 +31,29 @@ print("MTKD samples:", len(mtkd))
 print("Sarcasm samples:", len(sarcasm))
 print("Emotion samples:", len(emotion))
 
+
 # ------------------------
-# Combine into single dataframe
+# Combine dataframe
 # ------------------------
 
 fusion_df = pd.DataFrame({
+
     "text": mtkd["text"],
     "p_cb": mtkd["P_cb"],
     "p_sarcasm": sarcasm["p_sarcasm"],
     "p_emotion": emotion["p_emotion"]
+
 })
+
+
+# ------------------------
+# Safety clipping
+# ------------------------
+
+fusion_df["p_cb"] = np.clip(fusion_df["p_cb"], 0, 1)
+fusion_df["p_sarcasm"] = np.clip(fusion_df["p_sarcasm"], 0, 1)
+fusion_df["p_emotion"] = np.clip(fusion_df["p_emotion"], 0, 1)
+
 
 # ------------------------
 # Fusion Formula
@@ -52,11 +67,13 @@ fusion_df["fusion_score"] = (
     + 0.15 * fusion_df["p_emotion"]
 )
 
+
 # ------------------------
 # Final Prediction
 # ------------------------
 
 fusion_df["prediction"] = (fusion_df["fusion_score"] >= 0.5).astype(int)
+
 
 # ------------------------
 # Save Results

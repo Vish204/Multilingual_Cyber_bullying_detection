@@ -1,5 +1,4 @@
 import pandas as pd
-from load_models import load_all_models
 from predict_components import run_component_predictions
 
 
@@ -10,18 +9,16 @@ from predict_components import run_component_predictions
 def compute_fusion_score(p_cb, p_sarcasm, p_emotion):
     """
     Compute final cyberbullying score using fusion.
-
-    Formula used in Phase 3.5 evaluation.
     """
 
     fusion_score = (
         0.50 * p_cb +
-        0.3 * p_sarcasm +
-        0.2 * p_emotion
+        0.30 * p_sarcasm +
+        0.20 * p_emotion
     )
 
     fusion_score = max(0.0, min(1.0, fusion_score))
-    
+
     return fusion_score
 
 
@@ -30,11 +27,6 @@ def compute_fusion_score(p_cb, p_sarcasm, p_emotion):
 # ----------------------------------------------------
 
 def run_fusion(text_list, models, threshold=0.5):
-    """
-    Run full fusion pipeline.
-
-    Returns dataframe with final predictions.
-    """
 
     df = run_component_predictions(text_list, models)
 
@@ -67,6 +59,8 @@ def run_fusion(text_list, models, threshold=0.5):
 # ----------------------------------------------------
 
 if __name__ == "__main__":
+
+    from load_models import load_all_models
 
     models = load_all_models()
 

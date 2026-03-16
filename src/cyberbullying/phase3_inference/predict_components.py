@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import json
 import re
+import unicodedata
 from pathlib import Path
 from textblob import TextBlob
 from scipy.sparse import hstack
@@ -12,8 +13,6 @@ from scipy.sparse import hstack
 # ------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parents[3]
-
-KEYWORDS_DIR = BASE_DIR / "resources/keywords/multilingual_keywords"
 
 VOCAB_PATH = BASE_DIR / "models/sarcasm/vocab.json"
 
@@ -31,18 +30,19 @@ PAD_ID = SARCASM_VOCAB["<PAD>"]
 UNK_ID = SARCASM_VOCAB["<UNK>"]
 
 # ------------------------------------------------
-# Load multilingual keywords
+# Text Normalization (must match training)
 # ------------------------------------------------
 
-keywords = set()
+def normalize_text(text):
 
-for file in KEYWORDS_DIR.glob("*.json"):
+    text = unicodedata.normalize("NFKC", text)
 
-    with open(file, encoding="utf-8") as f:
-        data = json.load(f)
+    text = text.lower()
 
-    for kw in data["keywords"]:
-        keywords.add(kw.lower())
+    text = re.sub(r"\s+", " ", text)
+
+    return text
+
 
 # ------------------------------------------------
 # Handcrafted features
@@ -85,18 +85,21 @@ def extract_handcrafted_features(text):
 
 
 # ------------------------------------------------
-# Keyword features
+# Keyword features (regex based)
 # ------------------------------------------------
 
-def keyword_features(text):
+def keyword_features(text, keyword_patterns):
 
-    words = text.lower().split()
+    count = 0
 
-    count = sum(1 for w in words if w in keywords)
+    for pattern in keyword_patterns:
+
+        if pattern.search(text):
+            count += 1
 
     present = 1 if count > 0 else 0
 
-    ratio = count / max(1, len(words))
+    ratio = count / max(1, len(text.split()))
 
     return np.array([present, count, ratio])
 
@@ -129,33 +132,33 @@ def predict_cyberbullying(text, models):
     word_vec = models["word_vectorizer"]
     char_vec = models["char_vectorizer"]
     scaler = models["scaler"]
+    keyword_patterns = models["keyword_patterns"]
 
-    text = str(text).lower()
+    text = normalize_text(str(text))
 
-    # Word TF-IDF
+    # TF-IDF features
     X_word = word_vec.transform([text])
-
-    # Char TF-IDF
     X_char = char_vec.transform([text])
 
     # Handcrafted
     X_hand = extract_handcrafted_features(text).reshape(1, -1)
 
     # Keyword
-    X_key = keyword_features(text).reshape(1, -1)
+    X_key = keyword_features(text, keyword_patterns).reshape(1, -1)
 
+    # Combine numeric
     X_numeric = np.hstack([X_hand, X_key])
 
     # Scale numeric
     X_numeric = scaler.transform(X_numeric)
 
-    # Combine
+    # Combine all
     X = hstack([X_word, X_char, X_numeric])
 
     # Predict
     p_cb = student.predict(X)[0]
 
-    # clip to probability range
+    # Clip to probability range
     p_cb = float(np.clip(p_cb, 0, 1))
 
     return p_cb

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import re
 import json
+import unicodedata
 
 from pathlib import Path
 from scipy.sparse import hstack, csr_matrix
@@ -23,6 +24,18 @@ KEYWORDS_DIR = PROJECT_ROOT / "resources" / "keywords" / "multilingual_keywords"
 
 OUTPUT_DIR = PROJECT_ROOT / "notebooks" / "analysis_results" / "fusion"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# =========================================================
+# TEXT NORMALIZATION (Google multilingual trick)
+# =========================================================
+
+def normalize_text(text):
+
+    text = unicodedata.normalize("NFKC", text)
+    text = text.lower()
+
+    return text
 
 
 # =========================================================
@@ -56,6 +69,12 @@ for file in KEYWORDS_DIR.glob("*.json"):
     for kw in data["keywords"]:
 
         keywords.add(kw.lower())
+
+# regex keyword matcher
+keyword_pattern = re.compile(
+    r"\b(" + "|".join(map(re.escape, keywords)) + r")\b",
+    re.IGNORECASE
+)
 
 
 # =========================================================
@@ -106,7 +125,7 @@ def extract_handcrafted_features(texts):
 
 
 # =========================================================
-# KEYWORD FEATURES
+# KEYWORD FEATURES (regex based)
 # =========================================================
 
 def keyword_features(texts):
@@ -115,13 +134,13 @@ def keyword_features(texts):
 
     for text in texts:
 
-        words = text.lower().split()
+        matches = keyword_pattern.findall(text)
 
-        count = sum(1 for w in words if w in keywords)
+        count = len(matches)
 
         present = 1 if count > 0 else 0
 
-        ratio = count / max(1, len(words))
+        ratio = count / max(1, len(text.split()))
 
         feats.append([present, count, ratio])
 
@@ -138,6 +157,9 @@ df = pd.read_csv(DATA_PATH)
 
 texts = df["text"].astype(str).tolist()
 labels = df["label"].values
+
+# apply normalization
+texts = [normalize_text(t) for t in texts]
 
 print("Samples:", len(texts))
 
@@ -192,6 +214,9 @@ X = hstack([
 print("Generating Student V2 probabilities...")
 
 probs = student_model.predict(X)
+
+# safety clip
+probs = np.clip(probs, 0, 1)
 
 
 # =========================================================
