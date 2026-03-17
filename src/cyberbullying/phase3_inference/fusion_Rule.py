@@ -1,198 +1,141 @@
-import json
-import re
-import numpy as np
-from pathlib import Path
-
 from load_models import load_all_models
-from predict_components import (
-    predict_cyberbullying,
-    predict_sarcasm,
-    predict_emotion
-)
+from predict_components import run_component_predictions
+from fusion_inference import compute_fusion_score
 
-# ======================================================
-# CONFIG
-# ======================================================
+print("Loading models...")
+models = load_all_models()
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+keyword_patterns = models["keyword_patterns"]
 
-KEYWORDS_DIR = PROJECT_ROOT / "resources/keywords/multilingual_keywords"
-
-BOOST_VALUE = 0.25
+print("System ready.\n")
 
 
-# ======================================================
-# LOAD KEYWORDS
-# ======================================================
-
-def extract_keywords_recursive(obj, keywords):
-
-    if isinstance(obj, dict):
-
-        for k, v in obj.items():
-
-            if k in ["native", "roman", "english"]:
-                if isinstance(v, str):
-                    keywords.add(v.lower().strip())
-
-            extract_keywords_recursive(v, keywords)
-
-    elif isinstance(obj, list):
-
-        for item in obj:
-            extract_keywords_recursive(item, keywords)
+# -----------------------------------------
+# Emotion helper
+# -----------------------------------------
+def get_top_emotions(p_neutral, p_aggression, p_distress):
+    emotions = {
+        "NEUTRAL": p_neutral,
+        "AGGRESSION": p_aggression,
+        "DISTRESS": p_distress
+    }
+    sorted_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)
+    return sorted_emotions[:2]
 
 
-def load_multilingual_keywords():
-
-    print("Loading multilingual keywords...")
-
-    keywords = set()
-
-    for file in KEYWORDS_DIR.glob("*.json"):
-
-        before = len(keywords)
-
-        with open(file, encoding="utf-8") as f:
-            data = json.load(f)
-
-        if "keywords" in data:
-
-            for kw in data["keywords"]:
-                if isinstance(kw, str):
-                    keywords.add(kw.lower().strip())
-
-        extract_keywords_recursive(data, keywords)
-
-        after = len(keywords)
-
-        print(f"{file.name} → {after-before} keywords loaded")
-
-    print("\nTotal unique keywords loaded:", len(keywords))
-
-    return keywords
-
-
-# ======================================================
-# KEYWORD DETECTOR
-# ======================================================
-
-def detect_keywords(text, keywords):
+# -----------------------------------------
+# Keyword detection
+# -----------------------------------------
+def detect_keywords(text, keyword_patterns):
 
     text = text.lower()
-
     found = []
 
-    for kw in keywords:
-
-        if kw in text:
-            found.append(kw)
+    for pattern in keyword_patterns:
+        if pattern.search(text):
+            found.append(pattern.pattern)
 
     return list(set(found))
 
 
-# ======================================================
-# MAIN
-# ======================================================
+while True:
 
-def main():
+    text = input("Enter text (type 'exit' to stop): ").strip()
 
-    print("Loading models...")
+    if text.lower() == "exit":
+        break
 
-    models = load_all_models()
+    if len(text) == 0:
+        print("Please enter some text.\n")
+        continue
 
-    sarcasm_model = models["sarcasm"]
-    emotion_tokenizer = models["emotion_tokenizer"]
-    emotion_model = models["emotion_model"]
+    df = run_component_predictions([text], models)
 
-    print("All models loaded successfully!")
+    p_cb = df["p_cb"].iloc[0]
+    p_sarcasm = df["p_sarcasm"].iloc[0]
 
-    keywords = load_multilingual_keywords()
+    # NEW emotion split
+    p_neutral = df["p_neutral"].iloc[0]
+    p_aggression = df["p_aggression"].iloc[0]
+    p_distress = df["p_distress"].iloc[0]
 
-    print("\nSystem ready.\n")
+    # ------------------------------
+    # KEYWORD BOOST (additive)
+    # ------------------------------
+    found_keywords = detect_keywords(text, keyword_patterns)
 
-    while True:
+    keyword_boost = 0
+    boosted = False
 
-        text = input("Enter text (type 'exit' to stop): ")
+    if len(found_keywords) == 1:
+        keyword_boost = 0.08
+        boosted = True
+    elif len(found_keywords) >= 2:
+        keyword_boost = 0.15
+        boosted = True
 
-        if text.lower() == "exit":
-            break
+    # ------------------------------
+    # BASE FUSION
+    # ------------------------------
+    fusion_score = compute_fusion_score(
+        p_cb,
+        p_sarcasm,
+        (p_aggression + p_distress)
+    )
 
-        # ==============================
-        # PREDICT COMPONENTS
-        # ==============================
+    fusion_score += keyword_boost
 
-        p_cb = predict_cyberbullying(text, models)
+    # ------------------------------
+    # EMOTION LOGIC (NEW)
+    # ------------------------------
 
-        p_sar = predict_sarcasm(text, sarcasm_model)
+    # Aggression → increase
+    if p_aggression > 0.6:
+        fusion_score += 0.15
+    elif p_aggression > 0.4:
+        fusion_score += 0.08
 
-        p_emo = predict_emotion(text, emotion_tokenizer, emotion_model)
+    # Distress → decrease (only if CB is low)
+    if p_distress > 0.6 and p_cb < 0.4:
+        fusion_score -= 0.15
+    elif p_distress > 0.4 and p_cb < 0.3:
+        fusion_score -= 0.08
 
-        # ==============================
-        # KEYWORD BOOST
-        # ==============================
+    # Clamp
+    fusion_score = max(0.0, min(1.0, fusion_score))
 
-        found_keywords = detect_keywords(text, keywords)
+    prediction = "CYBERBULLYING" if fusion_score >= 0.5 else "NORMAL"
 
-        boosted = False
+    if fusion_score >= 0.8:
+        severity = "SEVERE"
+    elif fusion_score >= 0.65:
+        severity = "MODERATE"
+    elif fusion_score >= 0.5:
+        severity = "MILD"
+    else:
+        severity = "NONE"
 
-        if len(found_keywords) > 0:
+    # top emotions
+    top_emotions = get_top_emotions(p_neutral, p_aggression, p_distress)
 
-            p_cb = min(1.0, p_cb + BOOST_VALUE)
+    print("\n----- RESULT -----")
 
-            boosted = True
+    print("Cyberbullying Probability :", round(p_cb, 4))
+    print("Sarcasm Probability       :", round(p_sarcasm, 4))
 
-        # ==============================
-        # FUSION
-        # ==============================
+    print("Emotion Probabilities     :")
+    print(f"  Neutral: {p_neutral:.4f}, Aggression: {p_aggression:.4f}, Distress: {p_distress:.4f}")
 
-        fusion_score = (
-            0.6 * p_cb +
-            0.25 * p_sar +
-            0.15 * p_emo
-        )
+    print("Top Emotions              :", ", ".join([f"{e[0]} ({e[1]:.2f})" for e in top_emotions]))
 
-        # ==============================
-        # FINAL DECISION
-        # ==============================
+    print("Fusion Score              :", round(fusion_score, 4))
 
-        if fusion_score >= 0.6:
-            prediction = "CYBERBULLYING"
-            severity = "HIGH"
+    if boosted:
+        print(f"Keyword Boost Applied     : YES ({len(found_keywords)} matches)")
+    else:
+        print("Keyword Boost Applied     : NO")
 
-        elif fusion_score >= 0.4:
-            prediction = "CYBERBULLYING"
-            severity = "MEDIUM"
+    print("Final Prediction          :", prediction)
+    print("Severity Level            :", severity)
 
-        elif fusion_score >= 0.25:
-            prediction = "CYBERBULLYING"
-            severity = "LOW"
-
-        else:
-            prediction = "NORMAL"
-            severity = "NONE"
-
-        # ==============================
-        # OUTPUT
-        # ==============================
-
-        print("\n----- RESULT -----")
-
-        print(f"Cyberbullying Probability : {p_cb:.4f}")
-        print(f"Sarcasm Probability       : {p_sar:.4f}")
-        print(f"Emotion Probability       : {p_emo:.4f}")
-        print(f"Fusion Score              : {fusion_score:.4f}")
-
-        if boosted:
-            print(f"Keyword Boost Applied     : YES ({found_keywords})")
-        else:
-            print("Keyword Boost Applied     : NO")
-
-        print(f"Final Prediction          : {prediction}")
-        print(f"Severity Level            : {severity}")
-
-        print("-------------------\n")
-
-
-if __name__ == "__main__":
-    main()
+    print("-------------------\n")

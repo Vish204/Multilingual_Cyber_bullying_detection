@@ -17,8 +17,13 @@ def compute_fusion_score(p_cb, p_sarcasm, p_emotion):
         0.20 * p_emotion
     )
 
-    fusion_score = max(0.0, min(1.0, fusion_score))
+    #fusion_score = max(0.0, min(1.0, fusion_score))
 
+    # 🔥 Context boost (NO retraining, NO keywords)
+    if p_cb < 0.3 and p_emotion > 0.7 and p_sarcasm < 0.4:
+        fusion_score += 0.15
+
+    fusion_score = min(1.0, fusion_score)
     return fusion_score
 
 

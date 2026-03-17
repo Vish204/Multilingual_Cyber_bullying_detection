@@ -199,13 +199,12 @@ def predict_emotion(text, emotion_tokenizer, emotion_model):
 
         probs = torch.softmax(logits, dim=0).cpu().numpy()
 
-    p_neutral = probs[0]
-    p_aggression = probs[1]
-    p_distress = probs[2]
+    # ✅ CHANGED: return all 3 instead of single value
+    p_neutral = float(probs[0])
+    p_aggression = float(probs[1])
+    p_distress = float(probs[2])
 
-    p_emotion = float(p_aggression + p_distress)
-
-    return p_emotion
+    return p_neutral, p_aggression, p_distress
 
 
 # ------------------------------------------------
@@ -227,13 +226,22 @@ def run_component_predictions(text_list, models):
 
         p_sarcasm = predict_sarcasm(text, sarcasm_model)
 
-        p_emotion = predict_emotion(text, emotion_tokenizer, emotion_model)
+        # ✅ CHANGED: unpack 3 values
+        p_neutral, p_aggression, p_distress = predict_emotion(
+            text,
+            emotion_tokenizer,
+            emotion_model
+        )
 
         results.append({
             "text": text,
             "p_cb": p_cb,
             "p_sarcasm": p_sarcasm,
-            "p_emotion": p_emotion
+
+            #  NEW columns (important)
+            "p_neutral": p_neutral,
+            "p_aggression": p_aggression,
+            "p_distress": p_distress
         })
 
     return pd.DataFrame(results)
