@@ -1,6 +1,6 @@
 import pandas as pd
-from predict_components import run_component_predictions
-
+#from predict_components import run_component_predictions #works only in src/cyberbullying/phase3_inference
+from cyberbullying.phase3_inference.predict_components import run_component_predictions #works for phase4 testing
 
 # ----------------------------------------------------
 # Fusion Logic
