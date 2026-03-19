@@ -58,3 +58,9 @@ Thumbs.db
 # Analysis Outputs (DO NOT TRACK)
 # =========================
 notebooks/analysis_results/
+
+# =========================
+# API keys
+# =========================
+src/cyberbullying/data_collection/
+src/cyberbullying/collector/reddit_collector.py
