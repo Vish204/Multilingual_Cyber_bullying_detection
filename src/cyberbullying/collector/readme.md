@@ -4,120 +4,213 @@
 
 # Overview
 
-The Collector Module is responsible for acquiring real-world data from external platforms (currently Reddit), sending it through the ML pipeline, and storing the analyzed results in the database.
+The Collector Module enables real-time data ingestion from multiple platforms and feeds it into the cyberbullying detection pipeline.
 
-It transforms the system from a static API into a real-time monitoring pipeline.
+It converts the system from a static API into a live monitoring system.
 
 ---
 
 # Folder Structure
 
-```id="c0m8a1"
+```id="fs92kd"
 src/cyberbullying/collector/
-│
-├── reddit_collector.py     # Main Reddit data fetcher + API integration
-├── (future)
-│    ├── youtube_collector.py
-│    ├── twitter_collector.py
-│
-└── utils/ (optional later)
-     ├── deduplication.py
-     ├── scheduler.py
+
+├── reddit_collector.py      # Reddit posts + comments
+├── twitter_collector.py     # Twitter tweets
+├── youtube_collector.py     # YouTube comments
+
+├── cleaning_utils.py        # Text preprocessing
+├── language_utils.py        # Language detection
+├── balancing.py             # Multilingual balancing
+
+├── run_collector.py         # Trigger pipeline (manual mode)
+└── readme.md
 ```
 
 ---
 
-# Current Functionality
+# Supported Platforms
 
-## Reddit Data Collection
-
-* Uses Reddit API (PRAW)
-* Fetches posts from selected subreddits
-* Extracts:
-
-  * text (title + body)
-  * platform = "reddit"
-  * content_type = "post"
+| Platform | Data Type        |
+| -------- | ---------------- |
+| Reddit   | Posts + Comments |
+| Twitter  | Tweets           |
+| YouTube  | Comments         |
 
 ---
 
-## API Integration
+# Core Features
 
-Sends collected text to:
+## 1. Multi-Platform Collection
+
+* Fetches real-world data from APIs
+* Combines posts, comments, and tweets
+* Adds metadata:
+
+  * platform
+  * content_type
+
+---
+
+## 2. Data Cleaning
+
+* Removes URLs
+* Removes excessive whitespace
+* Keeps emojis (important for emotion detection)
+
+---
+
+## 3. Language Detection
+
+* Uses `langdetect`
+* Converts ISO codes to readable names
+
+### Example
 
 ```
+en → english
+hi → hindi
+mr → marathi
+```
+
+---
+
+## 4. Multilingual Balancing
+
+Ensures diversity in collected data:
+
+* Detects language distribution
+* If English dominates:
+
+  * Adds targeted multilingual content
+* Ensures presence of:
+
+  * Hindi
+  * Marathi
+  * Tamil
+  * Bengali (if available)
+
+---
+
+## 5. Deduplication
+
+* Removes duplicate text entries
+* Uses hash-based filtering
+
+---
+
+## 6. API Integration
+
+Each collected item is sent to:
+
+```id="api23x"
 POST /predict
 ```
 
-Receives:
+### Receives
 
 * label
 * severity
 * confidence
-* components
 * emotions
-* SHAP explanation
+* components
+* explanation
 
 ---
 
-## Database Storage
+## 7. Database Storage
 
-Stores enriched results in MongoDB.
-
-Includes:
+Stores results in MongoDB:
 
 * original text
-* prediction outputs
+* predictions
 * explanation
-* metadata (platform, content_type, timestamp)
+* metadata
+* timestamp
 
 ---
 
-## End-to-End Flow
+# End-to-End Flow
 
-```id="y9v2bz"
-Reddit → Collector → FastAPI (/predict) → ML System → MongoDB
+```id="flow72p"
+Platforms (Reddit/Twitter/YouTube)
+        ↓
+Collector Module
+        ↓
+Cleaning + Language Detection
+        ↓
+Balancing + Deduplication
+        ↓
+FastAPI (/predict)
+        ↓
+ML Models (Fusion System)
+        ↓
+MongoDB Storage
 ```
 
 ---
 
-# Planned Features
+# Execution Mode
 
-## Comments Scraping
+## Manual Trigger (Recommended)
 
-Extend the collector to include Reddit comments.
+Triggered via API or button:
 
-### Extract
+```id="run88p"
+POST /collect
+```
 
-* comment body
-* content_type = "comment"
+### Response
 
-Improves detection coverage (bullying often occurs in comments).
+```json id="res91k"
+{
+  "message": "Data collection completed",
+  "summary": {
+    "total_fetched": 22,
+    "processed": 15
+  }
+}
+```
 
 ---
 
-## Continuous Monitoring
+# Performance Optimization
 
-Convert the collector into a loop-based system.
-
-* Automatically fetches and processes data at intervals
-* Enables near real-time monitoring
+* Limit fetched data per platform
+* Cap final processed data (e.g., 15 items)
+* Avoid unnecessary API calls
 
 ---
 
-## Deduplication
+# Design Decisions
 
-Prevent duplicate storage using hash-based filtering.
+## Why not force language via API?
 
-* Ensures clean and efficient database
+* APIs often return Romanized text
+* Leads to poor accuracy for Indian languages
+
+### Solution
+
+* Collect data naturally
+* Detect language locally
+* Balance intelligently
+
+---
+
+# Future Enhancements
+
+* Real-time streaming (WebSockets)
+* Platform-specific dashboards
+* Language-wise analytics
+* Smart sampling based on trends
 
 ---
 
 # Final Goal
 
-A real-time cyberbullying monitoring system capable of:
+A scalable, multilingual, real-time cyberbullying monitoring system that:
 
-* Continuously collecting data
-* Detecting harmful content
-* Explaining model decisions
-* Storing structured insights
+* Collects live data
+* Detects harmful content
+* Explains predictions
+* Supports moderation workflows

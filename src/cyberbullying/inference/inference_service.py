@@ -2,6 +2,8 @@ from cyberbullying.phase3_inference.load_models import load_all_models
 from cyberbullying.phase3_inference.predict_components import run_component_predictions
 from cyberbullying.phase3_inference.fusion_inference import compute_fusion_score
 
+from langdetect import detect
+
 # ------------------------------------------------
 # Load models ONCE
 # ------------------------------------------------
@@ -12,7 +14,39 @@ print("System ready.\n")
 
 
 # ------------------------------------------------
-# Emotion helper (same as yours)
+# Language Detection
+# ------------------------------------------------
+
+LANGUAGE_MAP = {
+    "en": "english",
+    "hi": "hindi",
+    "mr": "marathi",
+    "bn": "bengali",
+    "ta": "tamil",
+    "te": "telugu",
+    "kn": "kannada",
+    "ml": "malayalam",
+    "gu": "gujarati",
+    "pa": "punjabi",
+    "ur": "urdu"
+}
+
+
+def detect_language(text: str):
+    try:
+        if len(text.split()) < 3:
+            return "unknown"
+        lang_code = detect(text)
+        return {
+            "code": lang_code,
+            "name": LANGUAGE_MAP.get(lang_code, "unknown")
+        }
+    except:
+        return "unknown"
+
+
+# ------------------------------------------------
+# Emotion helper
 # ------------------------------------------------
 
 def get_top_emotions(p_neutral, p_aggression, p_distress):
@@ -26,7 +60,7 @@ def get_top_emotions(p_neutral, p_aggression, p_distress):
 
 
 # ------------------------------------------------
-# MAIN FUNCTION (this replaces input loop)
+# MAIN FUNCTION
 # ------------------------------------------------
 
 def predict_post(text: str):
@@ -34,6 +68,9 @@ def predict_post(text: str):
     if not text or len(text.strip()) == 0:
         return {"error": "Empty input"}
 
+    # ---------------------------
+    # Model Predictions
+    # ---------------------------
     df = run_component_predictions([text], models)
 
     p_cb = float(df["p_cb"].iloc[0])
@@ -43,69 +80,79 @@ def predict_post(text: str):
     p_aggression = float(df["p_aggression"].iloc[0])
     p_distress = float(df["p_distress"].iloc[0])
 
-    # SAME fusion logic (unchanged)
+    # ---------------------------
+    # Fusion Score
+    # ---------------------------
     fusion_score = compute_fusion_score(
         p_cb,
         p_sarcasm,
         (p_aggression + p_distress)
     )
 
+    # ---------------------------
     # Prediction
-    prediction = "CYBERBULLYING" if fusion_score >= 0.5 else "NORMAL"
+    # ---------------------------
+    prediction = "cyberbullying" if fusion_score >= 0.5 else "normal"
 
-    # Severity (same thresholds)
+    # ---------------------------
+    # Severity
+    # ---------------------------
     if fusion_score >= 0.8:
-        severity = "SEVERE"
+        severity = "severe"
     elif fusion_score >= 0.65:
-        severity = "MODERATE"
+        severity = "moderate"
     elif fusion_score >= 0.5:
-        severity = "MILD"
+        severity = "mild"
     else:
-        severity = "NONE"
+        severity = "none"
 
-    # Top emotions
+    # ---------------------------
+    # Alert Flag (NEW)
+    # ---------------------------
+    alert = True if severity == "severe" else False
+
+    # ---------------------------
+    # Language Detection (NEW)
+    # ---------------------------
+    language = detect_language(text)
+
+    # ---------------------------
+    # Top Emotions
+    # ---------------------------
     top_emotions = get_top_emotions(
         p_neutral,
         p_aggression,
         p_distress
     )
 
-    # RETURN instead of print
-    # return {
-    #     "text": text,
-    #     #"prediction": prediction,
-    #     "label": prediction,
-    #     "severity": severity,
-    #     "fusion_score": float(fusion_score),
-
-    #     "probabilities": {
-    #         "cyberbullying": p_cb,
-    #         "sarcasm": p_sarcasm,
-    #         "neutral": p_neutral,
-    #         "aggression": p_aggression,
-    #         "distress": p_distress
-    #     },
-
-    #     "top_emotions": [
-    #         {"label": e[0], "score": float(e[1])}
-    #         for e in top_emotions
-    #     ]
-    # }
+    # ---------------------------
+    # Final Output (CLEAN + STANDARDIZED)
+    # ---------------------------
     return {
-    "label": prediction.lower(),              # "cyberbullying"
-    "severity": severity.lower(),             # "severe"
-    "confidence": float(fusion_score),        # renamed from fusion_score
+        "text": text,
 
-    "components": {
-        "cyberbullying": p_cb,
-        "sarcasm": p_sarcasm
-    },
+        "label": prediction,
+        "severity": severity,
+        "confidence": round(float(fusion_score), 4),
 
-    "emotions": [
-        {
-            "label": e[0].lower(),            # "aggression"
-            "score": round(float(e[1]), 3)    # 0.819
-        }
-        for e in top_emotions
-    ]
-}
+        "emotion": top_emotions[0][0].lower(),   # primary emotion
+        "sarcasm": round(p_sarcasm, 4),
+        "language": language,
+        "alert": alert,
+
+        "components": {
+            "cyberbullying": round(p_cb, 4),
+            "sarcasm": round(p_sarcasm, 4),
+            "neutral": round(p_neutral, 4),
+            "aggression": round(p_aggression, 4),
+            "distress": round(p_distress, 4)
+        },
+
+        "emotions": [
+            {
+                "label": e[0].lower(),
+                "score": round(float(e[1]), 3)
+            }
+            for e in top_emotions
+        ]
+    }

@@ -12,3 +12,11 @@ print(predict_post("I am feeling very sad today"))
 
 print("\nTest 2:")
 print(predict_post("You are completely useless"))
+
+
+print("\nTest 3:")
+text = "tu kya kar raha hai idiot"
+
+result = predict_post(text)
+
+print("\nRESULT:\n", result)

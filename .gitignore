@@ -63,4 +63,8 @@ notebooks/analysis_results/
 # API keys
 # =========================
 src/cyberbullying/data_collection/
-src/cyberbullying/collector/reddit_collector.py
+
+# ================================
+# Environment Variables (DO NOT TRACK)
+# ================================
+.env
