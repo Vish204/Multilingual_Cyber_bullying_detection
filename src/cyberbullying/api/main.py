@@ -62,12 +62,27 @@ def predict(request: TextRequest):
         # 🔹 Step 1: Prediction
         result = predict_post(request.text)
 
+
+        # Convert to percentage
+        result["confidence"] = round(result["confidence"] * 100, 2)
+        result["sarcasm"] = round(result["sarcasm"] * 100, 2)
+
+        # Also components if needed
+        for key in result.get("components", {}):
+            result["components"][key] = round(result["components"][key] * 100, 2)
+
+        # emotions list
+        for emo in result.get("emotions", []):
+            emo["score"] = round(emo["score"] * 100, 2)
+
         # 🔹 Step 2: SHAP Explanation
         explanation = explain_text(request.text)
 
         # 🔹 Step 3: Attach explanation
         result["explanation"] = explanation
 
+        print("Incoming:", request.platform, request.content_type)
+        
         # 🔥 Save to MongoDB
         save_prediction(
             text=request.text,

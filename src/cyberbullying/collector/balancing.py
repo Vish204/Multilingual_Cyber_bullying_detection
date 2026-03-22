@@ -12,7 +12,18 @@ def needs_balancing(lang_count, threshold=0.6):
 
 def get_missing_languages(lang_count):
 
-    target_languages = ["marathi", "hindi", "tamil", "bengali"]
+    target_languages = [
+        "marathi",
+        "hindi",
+        "tamil",
+        "bengali",
+        "gujarati",
+        "kannada",
+        "telugu",
+        "malayalam",
+        "punjabi",
+        "urdu"
+    ]
 
     missing = []
 

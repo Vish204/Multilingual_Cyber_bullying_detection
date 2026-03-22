@@ -74,7 +74,13 @@ LANGUAGE_QUERIES = {
     "hindi": "हिंदी",
     "marathi": "मराठी",
     "tamil": "தமிழ்",
-    "bengali": "বাংলা"
+    "bengali": "বাংলা",
+    "gujarati": "ગુજરાતી",
+    "kannada": "ಕನ್ನಡ",
+    "telugu": "తెలుగు",
+    "malayalam": "മലയാളം",
+    "punjabi": "ਪੰਜਾਬੀ",
+    "urdu": "اردو"
 }
 
 
@@ -101,20 +107,6 @@ def fetch_targeted_reddit(language, limit=3):
     return data
 
 
-# ---------------------------
-# 🔹 Deduplication
-# ---------------------------
-seen_hashes = set()
-
-def is_duplicate(text):
-    key = text.strip().lower()
-
-    if key in seen_hashes:
-        return True
-
-    seen_hashes.add(key)
-    return False
-
 
 # ---------------------------
 # 🔹 Send to API
@@ -128,8 +120,12 @@ def send_to_api(item):
     }
 
     try:
-        response = requests.post(API_URL, json=payload)
+        response = requests.post(API_URL, json=payload )
         return response.json()
+
+    except requests.exceptions.Timeout:
+        return {"error": "timeout"}
+
     except Exception as e:
         return {"error": str(e)}
 

@@ -28,7 +28,7 @@ def fetch_videos(query="india news", max_results=5):
         "key": API_KEY
     }
 
-    response = requests.get(SEARCH_URL, params=params)
+    response = requests.get(SEARCH_URL, params=params )
     data = response.json()
 
     return [item["id"]["videoId"] for item in data.get("items", [])]
@@ -47,7 +47,7 @@ def fetch_comments(video_id, limit=3):
         "textFormat": "plainText"
     }
 
-    response = requests.get(COMMENTS_URL, params=params)
+    response = requests.get(COMMENTS_URL, params=params )
     data = response.json()
 
     comments = []
@@ -89,7 +89,13 @@ LANGUAGE_QUERIES = {
     "hindi": "हिंदी समाचार",
     "marathi": "मराठी बातम्या",
     "tamil": "தமிழ் செய்திகள்",
-    "bengali": "বাংলা খবর"
+    "bengali": "বাংলা খবর",
+    "gujarati": "ગુજરાતી સમાચાર",
+    "kannada": "ಕನ್ನಡ ಸುದ್ದಿ",
+    "telugu": "తెలుగు వార్తలు",
+    "malayalam": "മലയാളം വാർത്തകൾ",
+    "punjabi": "ਪੰਜਾਬੀ ਖ਼ਬਰਾਂ",
+    "urdu": "اردو خبریں"
 }
 
 
@@ -109,19 +115,7 @@ def fetch_targeted_youtube(language):
     return data
 
 
-# ---------------------------
-# 🔹 Dedup
-# ---------------------------
-seen_hashes = set()
 
-def is_duplicate(text):
-    key = text.strip().lower()
-
-    if key in seen_hashes:
-        return True
-
-    seen_hashes.add(key)
-    return False
 
 
 # ---------------------------
@@ -136,8 +130,12 @@ def send_to_api(item):
     }
 
     try:
-        response = requests.post(API_URL, json=payload)
+        response = requests.post(API_URL, json=payload )
         return response.json()
+    
+    except requests.exceptions.Timeout:
+        return {"error": "timeout"}
+
     except Exception as e:
         return {"error": str(e)}
 

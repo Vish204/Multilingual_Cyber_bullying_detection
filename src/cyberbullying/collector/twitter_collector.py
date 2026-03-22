@@ -23,26 +23,66 @@ headers = {
 # ---------------------------
 def fetch_tweets(limit=6):
 
+
     params = {
-        "query": "india OR mumbai OR delhi -is:retweet",
-        "max_results": min(limit, 100)
+        "query": "(india OR mumbai OR delhi OR भारत OR मुंबई OR दिल्ली OR தமிழ் OR বাংলা OR मराठी) -is:retweet",
+        "max_results": min(limit, 50),
+        "tweet.fields": "lang,text"
     }
 
-    response = requests.get(SEARCH_URL, headers=headers, params=params)
+    response = requests.get(SEARCH_URL, headers=headers, params=params )
+
+    print("Twitter status:", response.status_code)
+    print("Twitter response:", response.text[:500])
     data = response.json()
 
     tweets = []
 
+    print("Tweets fetched:", len(data.get("data", [])))
+
     for tweet in data.get("data", []):
         text = clean_text(tweet.get("text", ""))
+
 
         if text:
             tweets.append({
                 "text": text,
-                "platform": "twitter",
+                "platform": "twitter",  
                 "content_type": "tweet"
             })
 
+    #  FALLBACK (if empty)
+    if not tweets:
+        print("Twitter fallback triggered")
+
+        fallback_params = {
+            "query": "news OR life OR people -is:retweet",
+            "max_results": 20,
+            "tweet.fields": "lang,text"
+        }
+
+        try:
+            response = requests.get(
+                SEARCH_URL,
+                headers=headers,
+                params=fallback_params,
+                timeout=5
+            )
+
+            data = response.json()
+
+            for tweet in data.get("data", []):
+                text = clean_text(tweet.get("text", ""))
+
+                if text:
+                    tweets.append({
+                        "text": text,
+                        "platform": "twitter",
+                        "content_type": "tweet"
+                    })
+
+        except Exception as e:
+            print("Twitter fallback error:", e)
     return tweets
 
 
@@ -53,7 +93,13 @@ LANGUAGE_KEYWORDS = {
     "marathi": "मराठी OR महाराष्ट्र",
     "hindi": "हिंदी OR भारत",
     "tamil": "தமிழ் OR சென்னை",
-    "bengali": "বাংলা OR কলকাতা"
+    "bengali": "বাংলা OR কলকাতা",
+    "gujarati": "ગુજરાતી OR અમદાવાદ",
+    "kannada": "ಕನ್ನಡ OR ಬೆಂಗಳೂರು",
+    "telugu": "తెలుగు OR హైదరాబాద్",
+    "malayalam": "മലയാളം OR കേരളം",
+    "punjabi": "ਪੰਜਾਬੀ OR ਪੰਜਾਬ",
+    "urdu": "اردو"
 }
 
 
@@ -68,7 +114,7 @@ def fetch_targeted_tweets(language, limit=3):
         "max_results": limit
     }
 
-    response = requests.get(SEARCH_URL, headers=headers, params=params)
+    response = requests.get(SEARCH_URL, headers=headers, params=params )
     data = response.json()
 
     tweets = []
@@ -86,20 +132,6 @@ def fetch_targeted_tweets(language, limit=3):
     return tweets
 
 
-# ---------------------------
-# 🔹 Dedup
-# ---------------------------
-seen_hashes = set()
-
-def is_duplicate(text):
-    key = text.strip().lower()
-
-    if key in seen_hashes:
-        return True
-
-    seen_hashes.add(key)
-    return False
-
 
 # ---------------------------
 # 🔹 Send to API
@@ -113,8 +145,12 @@ def send_to_api(item):
     }
 
     try:
-        response = requests.post(API_URL, json=payload)
+        response = requests.post(API_URL, json=payload )
         return response.json()
+    
+    except requests.exceptions.Timeout:
+        return {"error": "timeout"}
+
     except Exception as e:
         return {"error": str(e)}
 

@@ -32,18 +32,44 @@ LANGUAGE_MAP = {
 }
 
 
-def detect_language(text: str):
-    try:
-        if len(text.split()) < 3:
-            return "unknown"
-        lang_code = detect(text)
-        return {
-            "code": lang_code,
-            "name": LANGUAGE_MAP.get(lang_code, "unknown")
-        }
-    except:
-        return "unknown"
+# def detect_language(text: str):
+#     try:
+#         if len(text.split()) < 3:
+#             return "unknown"
+#         lang_code = detect(text)
+#         return {
+#             "code": lang_code,
+#             "name": LANGUAGE_MAP.get(lang_code, "unknown")
+#         }
+#     except:
+#         return "unknown"
 
+def detect_language(text: str):
+
+    try:
+        # 🔹 1. Handle empty
+        if not text or len(text.strip()) == 0:
+            return {"code": "unknown", "name": "unknown"}
+
+        # 🔹 2. SHORT TEXT FIX (VERY IMPORTANT)
+        if len(text.split()) <= 3:
+            return {"code": "en", "name": "english"}
+
+        # 🔹 3. ASCII CHECK (very effective)
+        if text.isascii():
+            return {"code": "en", "name": "english"}
+
+        # 🔹 4. Normal detection
+        from langdetect import detect
+        code = detect(text)
+
+        return {
+            "code": code,
+            "name": LANGUAGE_MAP.get(code, "unknown")
+        }
+
+    except Exception:
+        return {"code": "unknown", "name": "unknown"}
 
 # ------------------------------------------------
 # Emotion helper
@@ -128,8 +154,8 @@ def predict_post(text: str):
     # ---------------------------
     # Final Output (CLEAN + STANDARDIZED)
     # ---------------------------
+    
     return {
-        "text": text,
 
         "label": prediction,
         "severity": severity,
