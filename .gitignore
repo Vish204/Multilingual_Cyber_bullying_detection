@@ -68,3 +68,5 @@ src/cyberbullying/data_collection/
 # Environment Variables (DO NOT TRACK)
 # ================================
 .env
+
+phase1.txt
