@@ -6,10 +6,9 @@ import ActionButtons from "./ActionButtons";
 
 export default function PostDetails({ post, onAction }) {
   if (!post) {
-    return <p>Select a post to view details</p>;
+    return <p className="empty-state">Select a post to view details</p>;
   }
 
-  // 🔥 Dummy AI data (temporary)
   const aiData = {
     label: "bullying",
     confidence: 0.87,
@@ -19,37 +18,43 @@ export default function PostDetails({ post, onAction }) {
     sarcasm: 0.2
   };
 
-  // Handle moderation actions
   const handleAction = (action) => {
     onAction(action, post.id);
   };
 
   return (
-    <div>
-      {/* Text */}
-      <h3>Post</h3>
-      <p>{post.text}</p>
+    <div className="post-container">
 
-      {/* Meta */}
-      <div style={{ marginTop: "10px", color: "gray" }}>
-        <small>Platform: {post.platform}</small><br />
-        <small>Time: {post.time}</small>
+      {/* 🔹 HEADER */}
+      <div className="post-header">
+        <h2 className="post-text">{post.text}</h2>
+
+        <div className="post-meta">
+          <span>{post.platform}</span>
+          <span>{post.time}</span>
+        </div>
       </div>
 
-      {/* AI Output */}
-      <PredictionCard data={aiData} />
-    
+      {/* 🔹 AI CARD */}
+      <div className="card">
+        <PredictionCard data={aiData} />
+      </div>
 
-      {/* Explainability */}
-      <div style={{ marginTop: "20px" }}>
-        <h3>Explainability</h3>
+      {/* 🔹 EXPLAINABILITY */}
+      <div className="card">
+        <h3 className="section-title">Explainability</h3>
 
         <ShapHighlights text={post.text} />
         <FeatureList />
         <ContextSummary />
       </div>
 
-      <ActionButtons onAction={handleAction} />
+      {/* 🔹 ACTIONS */}
+      <div className="card">
+        <h3 className="section-title">Moderation Actions</h3>
+        <ActionButtons onAction={handleAction} />
+      </div>
+
     </div>
   );
 }

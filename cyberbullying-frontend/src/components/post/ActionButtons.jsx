@@ -1,11 +1,19 @@
 export default function ActionButtons({ onAction }) {
   return (
-    <div style={{ marginTop: "20px" }}>
-      <h3>Moderation Actions</h3>
+    <div className="actions-container">
+      <h3 className="section-title">Moderation Actions</h3>
 
-      <button onClick={() => onAction("ignore")}>Ignore</button>
-      <button onClick={() => onAction("delete")}>Delete</button>
-      <button onClick={() => onAction("report")}>Report</button>
+      <div className="action-buttons">
+        <button className="btn ignore" onClick={() => onAction("ignore")}>
+          Ignore
+        </button>
+        <button className="btn delete" onClick={() => onAction("delete")}>
+          Delete
+        </button>
+        <button className="btn report" onClick={() => onAction("report")}>
+          Report
+        </button>
+      </div>
     </div>
   );
 }

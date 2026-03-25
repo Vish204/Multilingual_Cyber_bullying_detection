@@ -4,10 +4,16 @@ import FeedItem from "./FeedItem";
 export default function FeedList({ feed, onSelectPost }) {
   const [selectedId, setSelectedId] = useState(null);
 
-  const handleClick = (post) => {
+const handleClick = (post) => {
+  if (selectedId === post.id) {
+    // 🔥 deselect
+    setSelectedId(null);
+    onSelectPost(null);
+  } else {
     setSelectedId(post.id);
     onSelectPost(post);
-  };
+  }
+};
 
   // ✅ safety check (VERY IMPORTANT)
   if (!feed || feed.length === 0) {
@@ -15,7 +21,7 @@ export default function FeedList({ feed, onSelectPost }) {
   }
 
   return (
-    <div>
+    <div className="feed-list">
       {feed.map((post) => (
         <FeedItem
           key={post.id}

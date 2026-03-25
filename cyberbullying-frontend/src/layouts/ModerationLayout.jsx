@@ -20,6 +20,12 @@ export default function ModerationLayout() {
       alert: true,
       content_type: "post",
       moderator_action: null,
+
+      verdict: "BULLYING",
+      confidence: 0.87,
+      emotion: "aggression",
+      emotion_score: 0.8,
+      sarcasm: 0.2,
     },
     {
       id: 2,
@@ -32,6 +38,12 @@ export default function ModerationLayout() {
       alert: true,
       content_type: "comment",
       moderator_action: "delete",
+    
+      verdict: "BULLYING",
+      confidence: 0.87,
+      emotion: "distress",
+      emotion_score: 0.8,
+      sarcasm: 0.6,
     },
     {
       id: 3,
@@ -44,10 +56,19 @@ export default function ModerationLayout() {
       alert: false,
       content_type: "comment",
       moderator_action: "ignore",
+
+      verdict: "NON-BULLYING",
+      confidence: 0.12,
+      emotion: "NEUTRAL",
+      emotion_score: 0.7,
+      sarcasm: 0.2,
     },
   ]);
 
   const [selectedPost, setSelectedPost] = useState(null);
+
+  const [isLive, setIsLive] = useState(false);
+  const [alert, setAlert] = useState(null);
 
   // ✅ Filters
   const [filters, setFilters] = useState({
@@ -120,37 +141,71 @@ export default function ModerationLayout() {
     }
   };
 
+  const triggerAlert = (post) => {
+  if (post.severity === "high") {
+    setAlert({
+      message: `${post.platform} | ${post.verdict} | ${Math.round(post.confidence * 100)}%`,
+      post: post,
+    });
+
+    // Auto hide after 5 sec
+    setTimeout(() => setAlert(null), 5000);
+  }
+};
+
+
   return (
     <div className="moderation-container">
 
+        {alert && (
+              <div className="alert-banner">
+                🚨 {alert.message}
+                <button onClick={() => setAlert(null)}>✖</button>
+              </div>
+        )}
+
       {/* Top Bar */}
       <div className="top-bar">
-        <h2>Live Moderation</h2>
-        <button className="fetch-btn">Fetch Data</button>
+
       </div>
 
       {/* Main Layout */}
       <div className="main-content">
 
         {/* ✅ LEFT PANEL (ONLY ONE) */}
-        <div className="left-panel">
+        <div className="panel left-panel">
+          <div className="live-indicator">
+            <span className="live-dot"></span>
+            Live Feed
+          </div>
+        <h2>Live Moderation</h2>
+        <button
+        className="fetch-btn"
+        onClick={() => setIsLive(!isLive)}
+        >
+          {isLive ? "Stop Stream" : "Start Stream"}
+        </button>
           <h3>Feed</h3>
 
           <FilterBar filters={filters} setFilters={setFilters} />
 
           <FeedList
             feed={filteredFeed}
-            onSelectPost={setSelectedPost}
+            onSelectPost={(post) => {
+              setSelectedPost(post);
+              triggerAlert(post);
+            }}
           />
+
         </div>
 
         {/* MIDDLE PANEL */}
-        <div className="middle-panel">
+        <div className="panel middle-panel">
           <PostDetails post={selectedPost} onAction={handleModeration} />
         </div>
 
         {/* RIGHT PANEL */}
-        <div style={{ flex: 1, borderLeft: "1px solid gray" }}>
+        <div className="panel right-panel">
           <RightPanel />
         </div>
 

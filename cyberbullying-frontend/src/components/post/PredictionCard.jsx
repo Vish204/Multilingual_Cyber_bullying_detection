@@ -4,12 +4,7 @@ import SarcasmIndicator from "./SarcasmIndicator";
 
 export default function PredictionCard({ data }) {
   return (
-    <div style={{
-      border: "1px solid #ccc",
-      padding: "10px",
-      marginTop: "15px",
-      borderRadius: "8px"
-    }}>
+    <div className="card">
       <h3>AI Prediction</h3>
 
       <p><strong>Label:</strong> {data.label}</p>
