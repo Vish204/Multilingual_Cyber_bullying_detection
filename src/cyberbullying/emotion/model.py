@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-MODEL_NAME = "xlm-roberta-base"
+MODEL_NAME = "xlm-roberta-base" # "bert-base-multilingual-cased" # "xlm-roberta-base"
 NUM_LABELS = 3
 
 

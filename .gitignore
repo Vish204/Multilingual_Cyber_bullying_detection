@@ -65,8 +65,12 @@ notebooks/analysis_results/
 src/cyberbullying/data_collection/
 
 # ================================
-# Environment Variables (DO NOT TRACK)
+# Environment Variables (DO NOT TRACK), api keys 
 # ================================
 .env
 
+# ================================
+# txt
+# ================================
 phase1.txt
+file structure.txt
