@@ -256,6 +256,16 @@ h3 {
   color: white;
 }
 
+.btn.save {
+  background: #6366f1;   /* nice indigo */
+  color: white;
+}
+
+.btn.export {
+  background: #0ea5e9;   /* blue */
+  color: white;
+}
+
 .btn:hover {
   transform: translateY(-1px);
   opacity: 0.9;
@@ -374,6 +384,18 @@ h3 {
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
+}
+
+.reviewed-badge {
+  font-size: 11px;
+  color: #10b981;
+  margin-left: 6px;
+}
+
+.saved-badge {
+  font-size: 11px;
+  color: #6366f1;
+  margin-left: 4px;
 }
 
 /* Text */

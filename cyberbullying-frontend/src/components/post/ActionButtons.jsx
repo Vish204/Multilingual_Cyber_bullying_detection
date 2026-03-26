@@ -13,6 +13,13 @@ export default function ActionButtons({ onAction }) {
         <button className="btn report" onClick={() => onAction("report")}>
           Report
         </button>
+        <button className="btn save" onClick={() => onAction("save")}>
+          Save
+        </button>
+
+        <button className="btn export" onClick={() => onAction("export")}>
+          Export
+        </button>
       </div>
     </div>
   );

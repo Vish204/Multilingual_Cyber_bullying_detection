@@ -29,6 +29,7 @@ export default function ModerationLayout() {
       emotion: "aggression",
       emotion_score: 0.8,
       sarcasm: 0.6,
+      saved: false,
     },
     {
       id: 2,
@@ -47,6 +48,7 @@ export default function ModerationLayout() {
       emotion: "distress",
       emotion_score: 0.8,
       sarcasm: 0.6,
+      saved: false,
     },
     {
       id: 3,
@@ -65,6 +67,7 @@ export default function ModerationLayout() {
       emotion: "neutral",
       emotion_score: 0.7,
       sarcasm: 0.2,
+      saved: false,
     },
   ]);
 
@@ -132,9 +135,79 @@ export default function ModerationLayout() {
   });
 
   // ✅ Moderation
-  const handleModeration = (action, postId) => {
-    console.log("Moderating:", action, postId);
+const handleModeration = (action, postId) => {
+  console.log("Moderating:", action, postId);
 
+//   if (action === "export") {
+//   const reviewedPosts = feed.filter(p => p.reviewed);
+
+//   if (reviewedPosts.length === 0) {
+//     alert("No reviewed posts to export");
+//     return;
+//   }
+
+//   const dataStr = JSON.stringify(reviewedPosts, null, 2);
+//   const blob = new Blob([dataStr], { type: "application/json" });
+
+//   const url = URL.createObjectURL(blob);
+//   const a = document.createElement("a");
+//   a.href = url;
+//   a.download = "reviewed_posts.json";
+//   a.click();
+
+//   URL.revokeObjectURL(url);
+//   return;
+// }
+
+if (action === "export") {
+  const reviewedPosts = feed.filter(p => p.reviewed);
+
+  if (reviewedPosts.length === 0) {
+    alert("No reviewed posts to export");
+    return;
+  }
+
+  // 🔹 Define CSV headers
+  const headers = [
+    "id",
+    "text",
+    "platform",
+    "severity",
+    "language",
+    "verdict",
+    "confidence",
+    "emotion",
+    "sarcasm",
+    "reviewed",
+    "saved",
+    "moderator_action"
+  ];
+
+  // 🔹 Convert to CSV rows
+  const rows = reviewedPosts.map(post =>
+    headers.map(field => `"${post[field] ?? ""}"`).join(",")
+  );
+
+  // 🔹 Combine header + rows
+  const csvContent = [
+    headers.join(","), 
+    ...rows
+  ].join("\n");
+
+  // 🔹 Create file + download
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "reviewed_posts.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+  if (action === "delete") {
+    // 🔥 ONLY delete removes from feed
     const updatedFeed = feed.filter((item) => item.id !== postId);
     setFeed(updatedFeed);
 
@@ -143,7 +216,28 @@ export default function ModerationLayout() {
     } else {
       setSelectedPost(null);
     }
-  };
+
+  } else {
+    // 🔥 update post instead of removing
+    const updatedFeed = feed.map((item) => {
+      if (item.id === postId) {
+        return {
+          ...item,
+          reviewed: true,
+          saved: action === "save",
+          moderator_action: action,
+        };
+      }
+      return item;
+    });
+
+    setFeed(updatedFeed);
+
+    // keep same post selected (important UX)
+    const updatedPost = updatedFeed.find(p => p.id === postId);
+    setSelectedPost(updatedPost);
+  }
+};
 
     const triggerAlert = (post) => {
       if (post.severity === "high") {

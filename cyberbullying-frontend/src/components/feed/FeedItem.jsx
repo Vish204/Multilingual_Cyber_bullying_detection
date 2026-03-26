@@ -29,12 +29,22 @@ export default function FeedItem({ post, isSelected, onClick }) {
         <div className="platform-info">
           {getPlatformIcon()}
           <span>{post.platform}</span>
+
+          {post.reviewed && (
+            <span className="reviewed-badge">✔</span>
+          )}
+
+          {post.saved && (
+            <span className="saved-badge">💾</span>
+          )}
         </div>
 
 {/* right side high/low etc  */}
         {/* <span className={`severity ${post.severity}`}>
           {post.severity.toUpperCase()}
         </span> */}
+
+
 
         {/* RIGHT: verdict */}
         <span className={`verdict ${post.verdict === "BULLYING" ? "bad" : "good"}`}>
