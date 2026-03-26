@@ -1,21 +1,8 @@
-import { useState } from "react";
 import FeedItem from "./FeedItem";
 
-export default function FeedList({ feed, onSelectPost }) {
-  const [selectedId, setSelectedId] = useState(null);
+export default function FeedList({ feed, onSelectPost, selectedPost }) {
 
-const handleClick = (post) => {
-  if (selectedId === post.id) {
-    // 🔥 deselect
-    setSelectedId(null);
-    onSelectPost(null);
-  } else {
-    setSelectedId(post.id);
-    onSelectPost(post);
-  }
-};
-
-  // ✅ safety check (VERY IMPORTANT)
+  // ✅ safety check
   if (!feed || feed.length === 0) {
     return <p>No data available</p>;
   }
@@ -26,8 +13,8 @@ const handleClick = (post) => {
         <FeedItem
           key={post.id}
           post={post}
-          isSelected={selectedId === post.id}
-          onClick={() => handleClick(post)}
+          isSelected={selectedPost?.id === post.id}
+          onClick={() => onSelectPost(post)}
         />
       ))}
     </div>

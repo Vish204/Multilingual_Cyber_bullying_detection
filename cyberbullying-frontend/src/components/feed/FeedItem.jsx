@@ -17,8 +17,11 @@ export default function FeedItem({ post, isSelected, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`feed-item ${isSelected ? "selected" : ""} ${post.severity}`}
-    >
+      className={`feed-item 
+        ${post.severity} 
+        ${isSelected ? "selected" : ""}
+      `}
+    > 
 
       {/* 🔹 Top row */}
       <div className="feed-top">
@@ -42,33 +45,30 @@ export default function FeedItem({ post, isSelected, onClick }) {
 
       {/* 🔹 Text */}
       <p className="feed-text">
-        {post.text.length > 80
-          ? post.text.substring(0, 80) + "..."
-          : post.text}
-        <div className="feed-ai">
+  {post.text.length > 80
+    ? post.text.substring(0, 80) + "..."
+    : post.text}
+</p>
 
+<div className="feed-ai">
 
-          {/* Emotion (only if confident) */}
-          {post.emotion_score >= 0.5 && (
-            <span className={`tag ${post.emotion}`}>
-              {getEmotionIcon()} {post.emotion}
-            </span>
-          )}
+  {post.emotion_score >= 0.5 && (
+    <span className={`tag ${post.emotion}`}>
+      {getEmotionIcon()} {post.emotion}
+    </span>
+  )}
 
-          {/* Sarcasm */}
-          {post.sarcasm >= 0.5 && (
-            <span className="tag warning">
-              😏 Sarcasm
-            </span>
-          )}
+  {post.sarcasm >= 0.5 && (
+    <span className="tag warning">
+      😏 Sarcasm
+    </span>
+  )}
 
-          {/* Confidence */}
-          <span className="tag confidence">
-            Confidence: {Math.round(post.confidence * 100)}%
-          </span>
+  <span className="tag confidence">
+    Confidence: {Math.round(post.confidence * 100)}%
+  </span>
 
-        </div>
-      </p>
+</div>
 
       {/* 🔹 Bottom */}
       <div className="feed-meta">

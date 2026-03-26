@@ -4,6 +4,8 @@ import FeedList from "../components/feed/FeedList";
 import PostDetails from "../components/post/PostDetails";
 import RightPanel from "../components/context/RightPanel";
 import FilterBar from "../components/common/FilterBar";
+import ContextPanel from "../components/context/ContextPanel";
+
 import { useEffect } from "react";
 
 export default function ModerationLayout() {
@@ -180,12 +182,19 @@ export default function ModerationLayout() {
       {alert && (
         <div
           className="alert-banner"
-          onClick={() => {
-            setSelectedPost(alert.post);
+            onClick={() => {
+              const postExists = feed.find(p => p.id === alert.post.id);
 
-            // remove current alert
-            setAlert(null);
-          }}
+              if (postExists) {
+                setSelectedPost(postExists);
+              } else {
+                // setSelectedPost(null); // prevent ghost UI
+                    setAlert(null);   // 🔥 remove invalid alert
+                    return;
+              }
+
+              setAlert(null);
+            }}
                   >
           🚨 {alert.message}
 
@@ -227,9 +236,8 @@ export default function ModerationLayout() {
 
           <FeedList
             feed={filteredFeed}
-              onSelectPost={(post) => {
-                setSelectedPost(post);
-              }}
+            selectedPost={selectedPost}
+            onSelectPost={(post) => setSelectedPost(post)}
           />
 
         </div>
@@ -241,7 +249,7 @@ export default function ModerationLayout() {
 
         {/* RIGHT PANEL */}
         <div className="panel right-panel">
-          <RightPanel />
+          <ContextPanel />
         </div>
 
       </div>

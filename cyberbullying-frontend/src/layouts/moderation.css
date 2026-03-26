@@ -63,12 +63,14 @@ body {
 .left-panel {
   flex: 1;      /* ~25% */
   min-width: 250px;
+  background: #d3e0ef;
 }
 
 .middle-panel {
   flex: 2;
   overflow-y: auto;
   padding-right: 8px;
+  background: #ffffff;
 }
 
 .middle-panel .card {
@@ -78,6 +80,8 @@ body {
 .right-panel {
   flex: 1;      /* ~25% */
   min-width: 250px;
+  background: #dbe1e5;
+  border-left: 1px solid #e5e7eb;;
 }
 
 .alert-high {
@@ -890,4 +894,59 @@ input::placeholder {
 .left-panel::-webkit-scrollbar-thumb:hover,
 .middle-panel::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+
+
+/* RIGHT PANEL */
+
+.context-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.context-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.context-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.context-card ul {
+  padding-left: 16px;
+  margin: 0;
+}
+
+.context-card li {
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #4b5563;
+}
+
+/* Severity colors */
+.context-card .high {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.context-card .low {
+  color: #16a34a;
+  font-weight: 600;
+}
+.context-card .mild {
+  color: #eab308;   /* yellow */
+  font-weight: 600;
+}
+
+.context-card .medium {
+  color: #f97316;   /* orange */
+  font-weight: 600;
 }
