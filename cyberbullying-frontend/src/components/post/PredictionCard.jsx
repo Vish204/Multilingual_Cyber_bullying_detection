@@ -1,24 +1,38 @@
-import SeverityBadge from "./SeverityBadge";
 import EmotionTag from "./EmotionTag";
 import SarcasmIndicator from "./SarcasmIndicator";
 
 export default function PredictionCard({ data }) {
+  const confidencePercent = (data.confidence * 100).toFixed(0);
+
   return (
-    <div className="card">
-      <h3>AI Prediction</h3>
+    <div>
 
-      <p><strong>Label:</strong> {data.label}</p>
-      <p><strong>Confidence:</strong> {(data.confidence * 100).toFixed(2)}%</p>
+      {/* ✅ CONFIDENCE LABEL */}
+      <div className="confidence-header">
+        <span className="confidence-title confidence-theme">Model Confidence</span>
+        <span className="confidence-value confidence-theme">{confidencePercent}%</span>
+      </div>
 
-      <p>
-        <strong>Severity:</strong>{" "}
-        <SeverityBadge severity={data.severity} />
-      </p>
+      {/* ✅ CONFIDENCE BAR */}
+      <div className="confidence-bar">
+        <div
+          className="confidence-fill"
+          style={{ width: `${confidencePercent}%` }}
+        ></div>
+      </div>
 
-      <p><strong>Language:</strong> {data.language}</p>
+      {/* ✅ AI SIGNALS (SEPARATE MEANING) */}
+      <div className="ai-tags">
 
-      <EmotionTag emotion={data.emotion} />
-      <SarcasmIndicator value={data.sarcasm} />
+        <EmotionTag emotion={data.emotion} />
+
+        {/* Show sarcasm ONLY if >= 50% */}
+        {data.sarcasm >= 0.5 && (
+          <SarcasmIndicator value={data.sarcasm} />
+        )}
+
+      </div>
+
     </div>
   );
 }

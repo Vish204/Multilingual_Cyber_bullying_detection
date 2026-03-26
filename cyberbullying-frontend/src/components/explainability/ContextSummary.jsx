@@ -1,12 +1,14 @@
 export default function ContextSummary() {
   return (
-    <div style={{ marginTop: "10px" }}>
-      <h4>Why flagged:</h4>
-      <ul>
-        <li>Aggressive tone detected</li>
-        <li>Direct insult keywords present</li>
-        <li>Low sarcasm → likely genuine</li>
-      </ul>
+    <div className="xai-summary">
+
+      <p className="xai-subtitle">Reasoning</p>
+
+      <p className="xai-text">
+        The system detected direct insulting language and aggressive tone,
+        which are strong indicators of bullying behavior.
+      </p>
+
     </div>
   );
 }

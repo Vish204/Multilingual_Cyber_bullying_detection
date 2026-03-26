@@ -4,6 +4,7 @@ import FeedList from "../components/feed/FeedList";
 import PostDetails from "../components/post/PostDetails";
 import RightPanel from "../components/context/RightPanel";
 import FilterBar from "../components/common/FilterBar";
+import { useEffect } from "react";
 
 export default function ModerationLayout() {
 
@@ -25,7 +26,7 @@ export default function ModerationLayout() {
       confidence: 0.87,
       emotion: "aggression",
       emotion_score: 0.8,
-      sarcasm: 0.2,
+      sarcasm: 0.6,
     },
     {
       id: 2,
@@ -36,7 +37,7 @@ export default function ModerationLayout() {
       language: "English",
       reviewed: true,
       alert: true,
-      content_type: "comment",
+      content_type: "tweet",
       moderator_action: "delete",
     
       verdict: "BULLYING",
@@ -59,7 +60,7 @@ export default function ModerationLayout() {
 
       verdict: "NON-BULLYING",
       confidence: 0.12,
-      emotion: "NEUTRAL",
+      emotion: "neutral",
       emotion_score: 0.7,
       sarcasm: 0.2,
     },
@@ -69,6 +70,7 @@ export default function ModerationLayout() {
 
   const [isLive, setIsLive] = useState(false);
   const [alert, setAlert] = useState(null);
+  const [alertedIds, setAlertedIds] = useState(new Set());
 
   // ✅ Filters
   const [filters, setFilters] = useState({
@@ -141,28 +143,62 @@ export default function ModerationLayout() {
     }
   };
 
-  const triggerAlert = (post) => {
-  if (post.severity === "high") {
-    setAlert({
-      message: `${post.platform} | ${post.verdict} | ${Math.round(post.confidence * 100)}%`,
-      post: post,
-    });
+    const triggerAlert = (post) => {
+      if (post.severity === "high") {
+        setAlert((prev) => {
+          // 🔥 prevent overwriting existing alert
+          if (prev && prev.post.id === post.id) return prev;
 
-    // Auto hide after 5 sec
-    setTimeout(() => setAlert(null), 5000);
-  }
-};
+          return {
+            message: `${post.platform} | ${post.verdict} | ${Math.round(post.confidence * 100)}%`,
+            post: post,
+          };
+        });
+      }
+    };
+    useEffect(() => {
+      // 🔥 Get latest high severity post (from bottom = newest)
+      const latestHigh = [...feed].reverse().find(
+        (post) => post.severity === "high" && !alertedIds.has(post.id)
+      );
+
+      if (latestHigh) {
+        triggerAlert(latestHigh);
+
+        setAlertedIds((prev) => {
+          const updated = new Set(prev);
+          updated.add(latestHigh.id);
+          return updated;
+        });
+      }
+    }, [feed, alertedIds]);
 
 
   return (
     <div className="moderation-container">
 
-        {alert && (
-              <div className="alert-banner">
-                🚨 {alert.message}
-                <button onClick={() => setAlert(null)}>✖</button>
-              </div>
-        )}
+      {alert && (
+        <div
+          className="alert-banner"
+          onClick={() => {
+            setSelectedPost(alert.post);
+
+            // remove current alert
+            setAlert(null);
+          }}
+                  >
+          🚨 {alert.message}
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // prevent triggering click
+              setAlert(null);
+            }}
+          >
+            ✖
+          </button>
+        </div>
+      )}
 
       {/* Top Bar */}
       <div className="top-bar">
@@ -191,10 +227,9 @@ export default function ModerationLayout() {
 
           <FeedList
             feed={filteredFeed}
-            onSelectPost={(post) => {
-              setSelectedPost(post);
-              triggerAlert(post);
-            }}
+              onSelectPost={(post) => {
+                setSelectedPost(post);
+              }}
           />
 
         </div>

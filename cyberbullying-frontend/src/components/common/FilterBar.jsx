@@ -4,6 +4,7 @@ export default function FilterBar({ filters, setFilters }) {
 
   // ✅ MUST be inside component
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   return (
   <div className="filter-container">
@@ -50,14 +51,34 @@ export default function FilterBar({ filters, setFilters }) {
     {/* 🔹 Row 2: Search + Toggle */}
     <div className="filter-row">
 
-      <input
-        type="text"
-        placeholder="Search..."
-        value={filters.search}
-        onChange={(e) =>
-          setFilters({ ...filters, search: e.target.value })
-        }
-      />
+      {/* 🔍 Search Toggle */}
+            {showSearch ? (
+              <input
+                type="text"
+                placeholder="Search..."
+                autoFocus
+                value={filters.search}
+                    onChange={(e) =>
+                      setFilters({ ...filters, search: e.target.value })
+                    }
+                    onBlur={() => {
+                      if (!filters.search) setShowSearch(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setShowSearch(false);
+                    }}
+  
+              />
+            ) : (
+              <button
+                className="search-btn"
+                onClick={() => setShowSearch(true)}
+              >
+                🔍
+              </button>
+              
+            )}
+
 
       <button
         className="filter-toggle-btn"

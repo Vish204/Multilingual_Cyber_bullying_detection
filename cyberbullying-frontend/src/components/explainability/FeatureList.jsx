@@ -1,19 +1,24 @@
 export default function FeatureList() {
+  // 🔥 dummy for now (later from backend SHAP/attention)
   const features = [
-    { word: "stupid", score: 0.42 },
-    { word: "hate", score: 0.31 }
+    { word: "stupid", impact: 0.42 },
+    { word: "hate", impact: 0.31 },
+    { word: "loser", impact: 0.25 },
   ];
 
   return (
-    <div>
-      <h4>Top Contributing Words</h4>
-      <ul>
-        {features.map((f, i) => (
-          <li key={i}>
-            {f.word} (+{f.score})
-          </li>
+    <div className="xai-features">
+
+      <p className="xai-subtitle">Top Influential Signals</p>
+
+      <div className="xai-tags">
+        {features.map((f, index) => (
+          <span key={index} className="xai-tag">
+            {f.word}
+          </span>
         ))}
-      </ul>
+      </div>
+
     </div>
   );
 }
