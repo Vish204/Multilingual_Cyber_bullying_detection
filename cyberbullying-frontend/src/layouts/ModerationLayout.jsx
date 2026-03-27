@@ -5,6 +5,7 @@ import PostDetails from "../components/post/PostDetails";
 import RightPanel from "../components/context/RightPanel";
 import FilterBar from "../components/common/FilterBar";
 import ContextPanel from "../components/context/ContextPanel";
+import { FaDownload } from "react-icons/fa";
 
 import { useEffect } from "react";
 
@@ -38,10 +39,10 @@ export default function ModerationLayout() {
       time: "5m ago",
       severity: "medium",
       language: "English",
-      reviewed: true,
+      reviewed: false,
       alert: true,
       content_type: "tweet",
-      moderator_action: "delete",
+      moderator_action: null,
     
       verdict: "BULLYING",
       confidence: 0.87,
@@ -57,7 +58,7 @@ export default function ModerationLayout() {
       time: "10m ago",
       severity: "low",
       language: "English",
-      reviewed: false,
+      reviewed: true,
       alert: false,
       content_type: "comment",
       moderator_action: "ignore",
@@ -72,7 +73,7 @@ export default function ModerationLayout() {
   ]);
 
   const [selectedPost, setSelectedPost] = useState(null);
-
+  const [actionMessage, setActionMessage] = useState(null); //toast for letting moderator know their action worked
   const [isLive, setIsLive] = useState(false);
   const [alert, setAlert] = useState(null);
   const [alertedIds, setAlertedIds] = useState(new Set());
@@ -134,8 +135,41 @@ export default function ModerationLayout() {
     return true;
   });
 
+
+const handleExport = () => {
+  const dataToExport = filteredFeed;
+
+  if (!dataToExport.length) {
+    alert("No data to export");
+    return;
+  }
+
+  const csvRows = [];
+
+  const headers = Object.keys(dataToExport[0]);
+  csvRows.push(headers.join(","));
+
+  dataToExport.forEach((row) => {
+    const values = headers.map((header) =>
+      `"${(row[header] ?? "").toString().replace(/"/g, '""')}"`
+    );
+    csvRows.push(values.join(","));
+  });
+
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "moderation_export.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+};
+
+
   // ✅ Moderation
-const handleModeration = (action, postId) => {
+const handleModeration = (action, postId, reason = "") => {
   console.log("Moderating:", action, postId);
 
 //   if (action === "export") {
@@ -159,84 +193,96 @@ const handleModeration = (action, postId) => {
 //   return;
 // }
 
-if (action === "export") {
-  const reviewedPosts = feed.filter(p => p.reviewed);
+    if (action === "export") {
+      const reviewedPosts = feed.filter(p => p.reviewed);
 
-  if (reviewedPosts.length === 0) {
-    alert("No reviewed posts to export");
-    return;
-  }
+      if (reviewedPosts.length === 0) {
+        alert("No reviewed posts to export");
+        return;
+      }
 
-  // 🔹 Define CSV headers
-  const headers = [
-    "id",
-    "text",
-    "platform",
-    "severity",
-    "language",
-    "verdict",
-    "confidence",
-    "emotion",
-    "sarcasm",
-    "reviewed",
-    "saved",
-    "moderator_action"
-  ];
+      // 🔹 Define CSV headers
+      const headers = [
+        "id",
+        "text",
+        "platform",
+        "severity",
+        "language",
+        "verdict",
+        "confidence",
+        "emotion",
+        "sarcasm",
+        "reviewed",
+        "saved",
+        "moderator_action"
+      ];
 
-  // 🔹 Convert to CSV rows
-  const rows = reviewedPosts.map(post =>
-    headers.map(field => `"${post[field] ?? ""}"`).join(",")
-  );
+      // 🔹 Convert to CSV rows
+      const rows = reviewedPosts.map(post =>
+        headers.map(field => `"${post[field] ?? ""}"`).join(",")
+      );
 
-  // 🔹 Combine header + rows
-  const csvContent = [
-    headers.join(","), 
-    ...rows
-  ].join("\n");
+      // 🔹 Combine header + rows
+      const csvContent = [
+        headers.join(","), 
+        ...rows
+      ].join("\n");
 
-  // 🔹 Create file + download
-  const blob = new Blob([csvContent], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+      // 🔹 Create file + download
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "reviewed_posts.csv";
-  a.click();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reviewed_posts.csv";
+      a.click();
 
-  URL.revokeObjectURL(url);
-}
-
-  if (action === "delete") {
-    // 🔥 ONLY delete removes from feed
-    const updatedFeed = feed.filter((item) => item.id !== postId);
-    setFeed(updatedFeed);
-
-    if (updatedFeed.length > 0) {
-      setSelectedPost(updatedFeed[0]);
-    } else {
-      setSelectedPost(null);
+      URL.revokeObjectURL(url);
     }
 
-  } else {
-    // 🔥 update post instead of removing
-    const updatedFeed = feed.map((item) => {
-      if (item.id === postId) {
-        return {
-          ...item,
-          reviewed: true,
-          saved: action === "save",
-          moderator_action: action,
-        };
-      }
-      return item;
-    });
+    if (action === "delete") {
+      // 🔥 ONLY delete removes from feed
+      const updatedFeed = feed.filter((item) => item.id !== postId);
+      setFeed(updatedFeed);
+      //so that it doesnt jump to next post after deleting
+      // if (updatedFeed.length > 0) {
+      //   setSelectedPost(updatedFeed[0]);
+      // } else {
+      //   setSelectedPost(null);
+      // }
+      setSelectedPost(null);
 
-    setFeed(updatedFeed);
+    } else if (action === "ignore" || action === "report" || action === "save") {
+      // 🔥 update post instead of removing
+      const updatedFeed = feed.map((item) => {
+        if (item.id === postId) {
+          return {
+            ...item,
+            reviewed: true,
+            saved: action === "save",
+            moderator_action: action,
+            reason: reason || "", 
+          };
+        }
+        return item;
+      });
 
-    // keep same post selected (important UX)
-    const updatedPost = updatedFeed.find(p => p.id === postId);
-    setSelectedPost(updatedPost);
-  }
+      setFeed(updatedFeed);
+
+      let message = "";
+
+      if (action === "ignore") message = "Post ignored";
+      if (action === "report") message = "Post reported";
+      if (action === "save") message = "Post saved";
+
+      setActionMessage(message);
+
+      setTimeout(() => setActionMessage(null), 2000);
+
+      // keep same post selected (important UX)
+      const updatedPost = updatedFeed.find(p => p.id === postId);
+      setSelectedPost(updatedPost);
+    }
 };
 
     const triggerAlert = (post) => {
@@ -268,6 +314,18 @@ if (action === "export") {
         });
       }
     }, [feed, alertedIds]);
+
+    // 🔥 Alert cleanup (IMPORTANT FIX)
+    useEffect(() => {
+      if (!alert) return;
+
+      const exists = feed.some(p => p.id === alert.post.id);
+
+      if (!exists) {
+        setAlert(null);
+      }
+
+    }, [feed, alert]);
 
 
   return (
@@ -303,6 +361,13 @@ if (action === "export") {
         </div>
       )}
 
+
+      {actionMessage && (
+        <div className="action-toast">
+          {actionMessage}
+        </div>
+      )}
+      
       {/* Top Bar */}
       <div className="top-bar">
 
@@ -324,14 +389,25 @@ if (action === "export") {
         >
           {isLive ? "Stop Stream" : "Start Stream"}
         </button>
+        <div className="feed-header">
           <h3>Feed</h3>
-
+        <button className="btn export" onClick={handleExport}>
+          <FaDownload size={14} />
+           Export CSV
+        </button>
+        </div>
           <FilterBar filters={filters} setFilters={setFilters} />
 
           <FeedList
             feed={filteredFeed}
             selectedPost={selectedPost}
-            onSelectPost={(post) => setSelectedPost(post)}
+            onSelectPost={(post) => {
+              if (selectedPost?.id === post.id) {
+                setSelectedPost(null);   // 🔥 deselect on second click
+              } else {
+                setSelectedPost(post);
+              }
+            }}
           />
 
         </div>

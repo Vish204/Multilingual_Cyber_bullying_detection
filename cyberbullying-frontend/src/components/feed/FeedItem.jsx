@@ -79,6 +79,15 @@ export default function FeedItem({ post, isSelected, onClick }) {
   </span>
 
 </div>
+      {/* 🔹 actions */}
+      {/* <div className="feed-action"> */}
+      <div>
+      {post.moderator_action && (
+        <span className={`tag action-${post.moderator_action}`}>
+          {post.moderator_action.toUpperCase()}
+        </span>
+      )}
+      </div>
 
       {/* 🔹 Bottom */}
       <div className="feed-meta">

@@ -10,9 +10,9 @@ export default function PostDetails({ post, onAction }) {
     return <p className="empty-state">Select a post to view details</p>;
   }
 
-  const handleAction = (action) => {
-    onAction(action, post.id);
-  };
+    const handleAction = (action, reason = "") => {
+      onAction(action, post.id, reason);
+    };
 
   return (
     <div className="post-container">

@@ -261,9 +261,36 @@ h3 {
   color: white;
 }
 
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+/* smaller clean export button */
 .btn.export {
-  background: #0ea5e9;   /* blue */
+  background: #0ea5e9;
   color: white;
+  padding: 8px 14px;   /* 🔥 increased */
+  font-size: 13px;     /* slightly bigger */
+  font-weight: 500;
+  border-radius: 8px;  /* smoother look */
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn.export:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+.btn.export svg {
+  font-size: 14px;
 }
 
 .btn:hover {
@@ -972,3 +999,68 @@ input::placeholder {
   color: #f97316;   /* orange */
   font-weight: 600;
 }
+
+
+.action-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #0f172a;
+  color: #eff3e3;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 1000;
+  animation: fadeInOut 2s ease;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+.report-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-box input {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.report-box button {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tag.action-ignore {
+  background: #64748b;
+  color: white;
+}
+
+.tag.action-report {
+  background: #f59e0b;
+  color: white;
+}
+
+.tag.action-save {
+  background: #3b82f6;
+  color: white;
+}
+/* .feed-action {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+} */
