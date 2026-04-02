@@ -68,7 +68,7 @@ export default function FeedItem({ post, isSelected, onClick }) {
     </span>
   )}
 
-  {post.sarcasm >= 0.5 && (
+  {post.sarcasm >= 50 && (
     <span className="tag warning">
       😏 Sarcasm
     </span>

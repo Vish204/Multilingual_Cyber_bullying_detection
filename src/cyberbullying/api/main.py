@@ -5,6 +5,7 @@ import csv
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
@@ -27,7 +28,16 @@ from cyberbullying.collector.run_collector import run_once
 
 app = FastAPI()
 
-
+# ------------------------------------------------
+# CORS
+# ------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # ------------------------------------------------
 # Request schema (VERY IMPORTANT)
 # ------------------------------------------------

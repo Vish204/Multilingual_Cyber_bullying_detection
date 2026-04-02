@@ -7,70 +7,89 @@ import FilterBar from "../components/common/FilterBar";
 import ContextPanel from "../components/context/ContextPanel";
 import { FaDownload } from "react-icons/fa";
 
+import { fetchPosts, moderatePost } from "../services/api";
+import { transformPost } from "../services/transform";
+
 import { useEffect } from "react";
 
 export default function ModerationLayout() {
 
   // ✅ Feed FIRST
-  const [feed, setFeed] = useState([
-    {
-      id: 1,
-      text: "You are so stupid",
-      platform: "Reddit",
-      time: "2m ago",
-      severity: "high",
-      language: "English",
-      reviewed: false,
-      alert: true,
-      content_type: "post",
-      moderator_action: null,
+  // const [feed, setFeed] = useState([
+  //   {
+  //     id: 1,
+  //     text: "You are so stupid",
+  //     platform: "Reddit",
+  //     time: "2m ago",
+  //     severity: "high",
+  //     language: "English",
+  //     reviewed: false,
+  //     alert: true,
+  //     content_type: "post",
+  //     moderator_action: null,
 
-      verdict: "BULLYING",
-      confidence: 0.87,
-      emotion: "aggression",
-      emotion_score: 0.8,
-      sarcasm: 0.6,
-      saved: false,
-    },
-    {
-      id: 2,
-      text: "I hate this person",
-      platform: "Twitter",
-      time: "5m ago",
-      severity: "medium",
-      language: "English",
-      reviewed: false,
-      alert: true,
-      content_type: "tweet",
-      moderator_action: null,
+  //     verdict: "BULLYING",
+  //     confidence: 0.87,
+  //     emotion: "aggression",
+  //     emotion_score: 0.8,
+  //     sarcasm: 0.6,
+  //     saved: false,
+  //   },
+  //   {
+  //     id: 2,
+  //     text: "I hate this person",
+  //     platform: "Twitter",
+  //     time: "5m ago",
+  //     severity: "medium",
+  //     language: "English",
+  //     reviewed: false,
+  //     alert: true,
+  //     content_type: "tweet",
+  //     moderator_action: null,
     
-      verdict: "BULLYING",
-      confidence: 0.87,
-      emotion: "distress",
-      emotion_score: 0.8,
-      sarcasm: 0.6,
-      saved: false,
-    },
-    {
-      id: 3,
-      text: "This is normal text",
-      platform: "YouTube",
-      time: "10m ago",
-      severity: "low",
-      language: "English",
-      reviewed: true,
-      alert: false,
-      content_type: "comment",
-      moderator_action: "ignore",
+  //     verdict: "BULLYING",
+  //     confidence: 0.87,
+  //     emotion: "distress",
+  //     emotion_score: 0.8,
+  //     sarcasm: 0.6,
+  //     saved: false,
+  //   },
+  //   {
+  //     id: 3,
+  //     text: "This is normal text",
+  //     platform: "YouTube",
+  //     time: "10m ago",
+  //     severity: "low",
+  //     language: "English",
+  //     reviewed: true,
+  //     alert: false,
+  //     content_type: "comment",
+  //     moderator_action: "ignore",
 
-      verdict: "NON-BULLYING",
-      confidence: 0.12,
-      emotion: "neutral",
-      emotion_score: 0.7,
-      sarcasm: 0.2,
-      saved: false,
-    },
-  ]);
+  //     verdict: "NON-BULLYING",
+  //     confidence: 0.12,
+  //     emotion: "neutral",
+  //     emotion_score: 0.7,
+  //     sarcasm: 0.2,
+  //     saved: false,
+  //   },
+  // ]);
+
+  const [feed, setFeed] = useState([]);
+
+  useEffect(() => {
+  async function loadFeed() {
+    try {
+      const data = await fetchPosts();
+      const transformed = data.map(transformPost);
+      setFeed(transformed);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+    }
+  }
+
+  loadFeed();
+}, []);
 
   const [selectedPost, setSelectedPost] = useState(null);
   const [actionMessage, setActionMessage] = useState(null); //toast for letting moderator know their action worked
@@ -169,8 +188,15 @@ const handleExport = () => {
 
 
   // ✅ Moderation
-const handleModeration = (action, postId, reason = "") => {
+const handleModeration = async (action, postId, reason = "") => {
+  
   console.log("Moderating:", action, postId);
+
+  try {
+    await moderatePost(postId, action);
+  } catch (err) {
+    console.error("API error:", err);
+  }
 
 //   if (action === "export") {
 //   const reviewedPosts = feed.filter(p => p.reviewed);
