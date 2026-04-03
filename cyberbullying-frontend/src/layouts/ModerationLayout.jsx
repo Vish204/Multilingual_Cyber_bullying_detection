@@ -76,9 +76,18 @@ export default function ModerationLayout() {
   // ]);
 
   const [feed, setFeed] = useState([]);
+  
 
-  useEffect(() => {
-  async function loadFeed() {
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null); //toast for letting moderator know their action worked
+  const [isLive, setIsLive] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const [alertedIds, setAlertedIds] = useState(new Set());
+
+
+
+
+  const loadFeed = async () => {
     try {
       const data = await fetchPosts();
       const transformed = data.map(transformPost);
@@ -86,16 +95,19 @@ export default function ModerationLayout() {
     } catch (err) {
       console.error("Error fetching posts:", err);
     }
-  }
+  };
 
-  loadFeed();
-}, []);
-
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [actionMessage, setActionMessage] = useState(null); //toast for letting moderator know their action worked
-  const [isLive, setIsLive] = useState(false);
-  const [alert, setAlert] = useState(null);
-  const [alertedIds, setAlertedIds] = useState(new Set());
+  const handleStreamToggle = async () => {
+    if (!isLive) {
+      // START stream
+      setIsLive(true);
+      await loadFeed();
+    } else {
+      // STOP stream
+      setIsLive(false);
+      setFeed([]); // optional: clear feed
+    }
+  };
 
   // ✅ Filters
   const [filters, setFilters] = useState({
@@ -193,9 +205,11 @@ const handleModeration = async (action, postId, reason = "") => {
   console.log("Moderating:", action, postId);
 
   try {
-    await moderatePost(postId, action);
+    if (action !== "save") {
+    await moderatePost(postId, action, reason);
+    }
   } catch (err) {
-    console.error("API error:", err);
+    console.error("Backend error:", err);
   }
 
 //   if (action === "export") {
@@ -268,7 +282,9 @@ const handleModeration = async (action, postId, reason = "") => {
 
     if (action === "delete") {
       // 🔥 ONLY delete removes from feed
-      const updatedFeed = feed.filter((item) => item.id !== postId);
+
+      // const updatedFeed = feed.filter((item) => item.id !== postId);
+      const updatedFeed = feed.filter(post => post.id !== postId);
       setFeed(updatedFeed);
       //so that it doesnt jump to next post after deleting
       // if (updatedFeed.length > 0) {
@@ -276,25 +292,45 @@ const handleModeration = async (action, postId, reason = "") => {
       // } else {
       //   setSelectedPost(null);
       // }
-      setSelectedPost(null);
+      // setSelectedPost(null);
+       // also clear selected post
+  if (selectedPost?.id === postId) {
+    setSelectedPost(null);
+  }
 
+  return;
+
+    } else if (action === "save" && item.moderator_action === "delete") {
+        return item;
     } else if (action === "ignore" || action === "report" || action === "save") {
       // 🔥 update post instead of removing
       const updatedFeed = feed.map((item) => {
         if (item.id === postId) {
+
+          // 🟢 SAVE → independent toggle
+          if (action === "save") {
+            return {
+              ...item,
+              saved: !item.saved, // toggle save
+            };
+          }
+
+          // 🔴 DELETE handled separately (already done)
+
+          // 🔴 IGNORE / REPORT → real moderation
           return {
             ...item,
             reviewed: true,
-            saved: action === "save",
             moderator_action: action,
-            reason: reason || "", 
+            reason: reason || "",
           };
         }
+
         return item;
       });
 
       setFeed(updatedFeed);
-
+      await loadFeed();
       let message = "";
 
       if (action === "ignore") message = "Post ignored";
@@ -411,7 +447,7 @@ const handleModeration = async (action, postId, reason = "") => {
         <h2>Live Moderation</h2>
         <button
         className="fetch-btn"
-        onClick={() => setIsLive(!isLive)}
+        onClick={handleStreamToggle}
         >
           {isLive ? "Stop Stream" : "Start Stream"}
         </button>
@@ -423,7 +459,11 @@ const handleModeration = async (action, postId, reason = "") => {
         </button>
         </div>
           <FilterBar filters={filters} setFilters={setFilters} />
-
+        {!isLive ? (
+          <div className="empty-state">
+            Click "Start Stream" to begin monitoring
+          </div>
+        ) : (
           <FeedList
             feed={filteredFeed}
             selectedPost={selectedPost}
@@ -435,7 +475,7 @@ const handleModeration = async (action, postId, reason = "") => {
               }
             }}
           />
-
+          )}
         </div>
 
         {/* MIDDLE PANEL */}

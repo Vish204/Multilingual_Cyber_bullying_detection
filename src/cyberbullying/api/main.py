@@ -165,6 +165,7 @@ def history(
 class ModerateRequest(BaseModel):
     id: str
     action: str   # ignore / report / delete
+    reason: str = None
 
 @app.post("/moderate")
 def moderate(request: ModerateRequest):
@@ -172,7 +173,8 @@ def moderate(request: ModerateRequest):
     try:
         updated = update_moderation_action(
             request.id,
-            request.action
+            request.action,
+            request.reason
         )
 
         if updated == 0:

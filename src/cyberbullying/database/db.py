@@ -126,14 +126,15 @@ def get_history(
 # 🔹 Update Moderator Action
 # ------------------------------------------------
 
-def update_moderation_action(record_id, action):
+def update_moderation_action(record_id, action, reason=" "):
 
     result = collection.update_one(
         {"_id": ObjectId(record_id)},
         {
             "$set": {
                 "moderator_action": action,
-                "reviewed": True
+                "reviewed": True,
+                "reason": reason
             }
         }
     )

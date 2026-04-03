@@ -382,7 +382,7 @@ h3 {
   font-weight: 600;
 }
 
-.severity.high {
+/* .severity.high {
   background: #fee2e2;
   color: #dc2626;
 }
@@ -395,7 +395,7 @@ h3 {
 .severity.low {
   background: #dcfce7;
   color: #16a34a;
-}
+} */
 
 /* Top row */
 .feed-top {
@@ -495,7 +495,7 @@ input::placeholder {
 }
 
 /* Normal */
-.feed-item.low {
+.feed-item.none {
   border-left: 4px solid #22c55e; /* green */
 }
 
@@ -505,12 +505,12 @@ input::placeholder {
 }
 
 /* Moderate */
-.feed-item.medium {
+.feed-item.moderate {
   border-left: 4px solid #f97316; /* orange */
 }
 
 /* Severe */
-.feed-item.high {
+.feed-item.severe {
   border-left: 4px solid #ef4444; /* red */
 }
 
@@ -1064,3 +1064,10 @@ input::placeholder {
   justify-content: space-between;
   font-size: 12px;
 } */
+
+.empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}

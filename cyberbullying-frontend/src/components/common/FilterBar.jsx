@@ -31,9 +31,10 @@ export default function FilterBar({ filters, setFilters }) {
         }
       >
         <option value="all">All Severity</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
+        <option value="severe">Severe</option>
+        <option value="moderate">Moderate</option>
+        <option value="mild">Mild</option>
+        <option value="none">None</option>
       </select>
 
       <select

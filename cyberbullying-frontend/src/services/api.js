@@ -8,7 +8,7 @@ export async function fetchPosts() {
 }
 
 // 🔹 Moderate post
-export async function moderatePost(id, action) {
+export async function moderatePost(id, action, reason = "") {
   const res = await fetch(`${BASE_URL}/moderate`, {
     method: "POST",
     headers: {
@@ -17,6 +17,7 @@ export async function moderatePost(id, action) {
     body: JSON.stringify({
       id,
       action,
+      reason, // 🔥 ADD
     }),
   });
 
