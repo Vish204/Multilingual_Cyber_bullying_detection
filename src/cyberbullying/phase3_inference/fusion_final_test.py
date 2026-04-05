@@ -1,11 +1,17 @@
 from load_models import load_all_models
 from predict_components import run_component_predictions
-from fusion_inference import compute_fusion_score
+from fusion_inference import compute_hybrid_fusion_score
+import time
 
 print("Loading models...")
 models = load_all_models()
 print("System ready.\n")
 
+# Shows detailed loading times
+print("Model Load Times (ms):")
+for k, v in models["load_times"].items():
+    print(f"  {k}: {v:.2f} ms")
+print()
 
 # -----------------------------------------
 # Emotion label helper
@@ -30,6 +36,8 @@ while True:
     if len(text) == 0:
         print("Please enter some text.\n")
         continue
+    
+    start_time = time.perf_counter()
 
     df = run_component_predictions([text], models)
 
@@ -42,11 +50,17 @@ while True:
     p_distress = df["p_distress"].iloc[0]
 
     # PURE fusion (unchanged)
-    fusion_score = compute_fusion_score(
+    fusion_score, calibrated_p_cb = compute_hybrid_fusion_score(
         p_cb,
         p_sarcasm,
-        (p_aggression + p_distress)  # still same for evaluation
+        p_aggression,
+        p_distress,
+        p_neutral,
+        text
     )
+
+    end_time = time.perf_counter()
+    prediction_time_ms = (end_time - start_time) * 1000 
 
     prediction = "CYBERBULLYING" if fusion_score >= 0.5 else "NORMAL"
 
@@ -65,6 +79,7 @@ while True:
     print("\n----- RESULT -----")
 
     print("Cyberbullying Probability :", round(p_cb, 4))
+    print("Calibrated CB Prob        :", round(calibrated_p_cb, 4), "after fusion")
     print("Sarcasm Probability       :", round(p_sarcasm, 4))
 
     print("Emotion Probabilities     :")
@@ -75,5 +90,5 @@ while True:
     print("Fusion Score              :", round(fusion_score, 4))
     print("Final Prediction          :", prediction)
     print("Severity Level            :", severity)
-
+    print(f"Prediction Time           : {prediction_time_ms:.2f} ms")
     print("-------------------\n")

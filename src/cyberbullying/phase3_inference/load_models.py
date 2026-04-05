@@ -38,8 +38,9 @@ EMOTION_MODEL_PATH = BASE_DIR / "models" / "emotion" / "final"
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+
 # ------------------------------------------------
-# Load Student Model
+# Load Student Model (with time measurement)
 # ------------------------------------------------
 
 def build_keyword_patterns(keywords):
@@ -56,6 +57,7 @@ def build_keyword_patterns(keywords):
 def load_student_model():
 
     print("Loading Student_V2 model...")
+    start = time.time()
 
     student_model = joblib.load(STUDENT_MODEL_PATH)
 
@@ -69,7 +71,10 @@ def load_student_model():
 
     keyword_patterns = build_keyword_patterns(keywords)
 
-    return student_model, word_vectorizer, char_vectorizer, scaler, keyword_patterns
+    duration = (time.time() - start) * 1000
+    print(f"Student model loaded in {duration:.2f} ms")
+
+    return student_model, word_vectorizer, char_vectorizer, scaler, keyword_patterns, duration
 
 
 # ------------------------------------------------
@@ -79,12 +84,15 @@ def load_student_model():
 def load_sarcasm_model():
 
     print("Loading Sarcasm model...")
-
+    start = time.time()
     sarcasm_model = torch.load(SARCASM_MODEL_PATH, map_location="cpu")
 
     sarcasm_model.eval()
 
-    return sarcasm_model
+    duration = (time.time() - start) * 1000
+    print(f"Sarcasm model loaded in {duration:.2f} ms")
+
+    return sarcasm_model, duration
 
 
 # ------------------------------------------------
@@ -94,7 +102,7 @@ def load_sarcasm_model():
 def load_emotion_model():
 
     print("Loading Emotion model...")
-
+    start = time.time()
     tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_PATH)
 
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -102,8 +110,10 @@ def load_emotion_model():
     )
 
     model.eval()
+    duration = (time.time() - start) * 1000
+    print(f"Emotion model loaded in {duration:.2f} ms")
 
-    return tokenizer, model
+    return tokenizer, model, duration
 
 
 # ------------------------------------------------
@@ -111,14 +121,18 @@ def load_emotion_model():
 # ------------------------------------------------
 
 def load_all_models():
+    total_start = time.time()
 
-    student_model, word_vec, char_vec, scaler, keyword_patterns = load_student_model()
+    student_model, word_vec, char_vec, scaler, keyword_patterns, t_cb = load_student_model()
 
-    sarcasm_model = load_sarcasm_model()
+    sarcasm_model, t_sarcasm = load_sarcasm_model()
 
-    emotion_tokenizer, emotion_model = load_emotion_model()
+    emotion_tokenizer, emotion_model, t_emotion = load_emotion_model()
 
     print("All models loaded successfully!")
+
+    total_duration = (time.time() - total_start) * 1000
+    print(f"\n✅ Total models loaded in {total_duration:.2f} ms\n")
 
     return {
 
@@ -136,7 +150,13 @@ def load_all_models():
 
         "emotion_tokenizer": emotion_tokenizer,
 
-        "emotion_model": emotion_model
+        "emotion_model": emotion_model,
+        "load_times": {
+            "student": t_cb,
+            "sarcasm": t_sarcasm,
+            "emotion": t_emotion,
+            "total": total_duration
+        }
 }
 
 # ------------------------------------------------
