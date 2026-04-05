@@ -2,7 +2,7 @@ const BASE_URL = "http://localhost:8000";
 
 // 🔹 Get posts
 export async function fetchPosts() {
-  const res = await fetch(`${BASE_URL}/history`);
+  const res = await fetch(`${BASE_URL}/history?limit=15`);
   const data = await res.json();
   return data.data;
 }
@@ -21,5 +21,49 @@ export async function moderatePost(id, action, reason = "") {
     }),
   });
 
+  return res.json();
+}
+
+export async function fetchSeverityStats() {
+  const res = await fetch(`${BASE_URL}/analytics/severity`);
+  return res.json();
+}
+
+export async function fetchAlerts() {
+  const res = await fetch(`${BASE_URL}/history?alert=true`);
+  return res.json();
+}
+
+
+export async function exportPosts(filters = {}) {
+  const cleanedFilters = {};
+
+  Object.keys(filters).forEach((key) => {
+    const value = filters[key];
+
+    //  skip null, undefined, empty, "all"
+    if (
+      value === null ||
+      value === undefined ||
+      value === "" ||
+      value === "all"
+    ) {
+      return;
+    }
+
+    cleanedFilters[key] = value;
+  });
+
+  const query = new URLSearchParams(cleanedFilters).toString();
+
+  const res = await fetch(`${BASE_URL}/export?${query}`);
+
+  const blob = await res.blob();
+  return blob;
+}
+
+
+export async function collectData() {
+  const res = await fetch(`${BASE_URL}/collect`);
   return res.json();
 }

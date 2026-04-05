@@ -7,8 +7,11 @@ import FilterBar from "../components/common/FilterBar";
 import ContextPanel from "../components/context/ContextPanel";
 import { FaDownload } from "react-icons/fa";
 
-import { fetchPosts, moderatePost } from "../services/api";
+
+import { fetchPosts, moderatePost, collectData } from "../services/api";
+import { exportPosts } from "../services/api";
 import { transformPost } from "../services/transform";
+
 
 import { useEffect } from "react";
 
@@ -83,6 +86,7 @@ export default function ModerationLayout() {
   const [isLive, setIsLive] = useState(false);
   const [alert, setAlert] = useState(null);
   const [alertedIds, setAlertedIds] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(false);
 
 
 
@@ -97,16 +101,19 @@ export default function ModerationLayout() {
     }
   };
 
-  const handleStreamToggle = async () => {
-    if (!isLive) {
-      // START stream
-      setIsLive(true);
-      await loadFeed();
-    } else {
-      // STOP stream
-      setIsLive(false);
-      setFeed([]); // optional: clear feed
-    }
+  // const handleStreamToggle = async () => {
+  //   if (!isLive) {
+  //     // START stream
+  //     setIsLive(true);
+  //     await loadFeed();
+  //   } else {
+  //     // STOP stream
+  //     setIsLive(false);
+  //     setFeed([]); // optional: clear feed
+  //   }
+  // };
+  const handleStreamToggle = () => {
+    setIsLive(prev => !prev);
   };
 
   // ✅ Filters
@@ -165,38 +172,31 @@ export default function ModerationLayout() {
 
     return true;
   });
+  // console.log("FEED:", feed);
+  // console.log("FILTERED:", filteredFeed);
 
 
-const handleExport = () => {
-  const dataToExport = filteredFeed;
 
-  if (!dataToExport.length) {
-    alert("No data to export");
-    return;
-  }
-
-  const csvRows = [];
-
-  const headers = Object.keys(dataToExport[0]);
-  csvRows.push(headers.join(","));
-
-  dataToExport.forEach((row) => {
-    const values = headers.map((header) =>
-      `"${(row[header] ?? "").toString().replace(/"/g, '""')}"`
+    const selectedIndex = filteredFeed.findIndex(
+      (p) => p.id === selectedPost?.id
     );
-    csvRows.push(values.join(","));
-  });
 
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
+  const handleExport = async () => {
+    try {
+      const blob = await exportPosts(filters); 
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "moderation_export.csv";
-  a.click();
+      const url = window.URL.createObjectURL(blob);
 
-  URL.revokeObjectURL(url);
-};
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "moderation_data.csv";
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
+  };
 
 
   // ✅ Moderation
@@ -300,9 +300,11 @@ const handleModeration = async (action, postId, reason = "") => {
 
   return;
 
-    } else if (action === "save" && item.moderator_action === "delete") {
-        return item;
-    } else if (action === "ignore" || action === "report" || action === "save") {
+    } 
+    // else if (action === "save" && item.moderator_action === "delete") {
+    //     return item;
+    // } 
+    else if (action === "ignore" || action === "report" || action === "save") {
       // 🔥 update post instead of removing
       const updatedFeed = feed.map((item) => {
         if (item.id === postId) {
@@ -330,7 +332,7 @@ const handleModeration = async (action, postId, reason = "") => {
       });
 
       setFeed(updatedFeed);
-      await loadFeed();
+      // await loadFeed();
       let message = "";
 
       if (action === "ignore") message = "Post ignored";
@@ -348,7 +350,7 @@ const handleModeration = async (action, postId, reason = "") => {
 };
 
     const triggerAlert = (post) => {
-      if (post.severity === "high") {
+      if (post.severity === "severe") {
         setAlert((prev) => {
           // 🔥 prevent overwriting existing alert
           if (prev && prev.post.id === post.id) return prev;
@@ -363,7 +365,7 @@ const handleModeration = async (action, postId, reason = "") => {
     useEffect(() => {
       // 🔥 Get latest high severity post (from bottom = newest)
       const latestHigh = [...feed].reverse().find(
-        (post) => post.severity === "high" && !alertedIds.has(post.id)
+        (post) => post.severity === "severe" && !alertedIds.has(post.id)
       );
 
       if (latestHigh) {
@@ -389,6 +391,72 @@ const handleModeration = async (action, postId, reason = "") => {
 
     }, [feed, alert]);
 
+    // useEffect(() => {
+    //   if (!isLive) return;
+
+    //   async function runStream() {
+    //     try {
+    //       setIsLoading(true);
+    //       console.log("🚀 Collecting 15 posts...");
+
+    //       // 🔥 STEP 1: Collect (adds max 15 to DB)
+    //       await collectData();
+
+    //       // 🔥 STEP 2: Fetch latest 15
+    //       const data = await fetchPosts();
+    //       const transformed = (data.data || data).map(transformPost);
+
+    //       setFeed(transformed);
+    //       console.log("RAW DATA:", data);
+    //       console.log("TRANSFORMED:", transformed);
+
+    //     } catch (err) {
+    //       console.error("Stream error:", err);
+    //     } finally {
+    //       // 🔥 AUTO STOP
+    //       setIsLive(false);
+    //       setIsLoading(false);
+    //       console.log("⏹ Stream stopped automatically");
+    //     }
+    //   }
+
+    //   runStream();
+    // }, [isLive]);
+    
+      useEffect(() => {
+        if (!isLive) return;
+
+        async function runStream() {
+          try {
+            setIsLoading(true);
+
+            console.log("🚀 Collecting 15 posts...");
+
+            await collectData();
+
+            const data = await fetchPosts();
+            console.log("RAW DATA:", data);
+
+            const transformed = data.map(transformPost);
+            console.log("TRANSFORMED:", transformed);
+
+            setFeed(transformed);
+            setSelectedPost(null);
+
+          } catch (err) {
+            console.error("Stream error:", err);
+          } finally {
+            // 🔥 FIX HERE
+            setTimeout(() => {
+              setIsLive(false);
+              setIsLoading(false);
+              console.log("⏹ Stream stopped automatically");
+            }, 100);
+          }
+        }
+
+        runStream();
+      }, [isLive]);
 
   return (
     <div className="moderation-container">
@@ -448,23 +516,33 @@ const handleModeration = async (action, postId, reason = "") => {
         <button
         className="fetch-btn"
         onClick={handleStreamToggle}
+        disabled={isLoading}
         >
-          {isLive ? "Stop Stream" : "Start Stream"}
+          {isLoading ? "Loading..." : "Start Stream"}
         </button>
         <div className="feed-header">
           <h3>Feed</h3>
+
+            <span className="feed-count">
+              {selectedIndex >= 0
+                ? `${selectedIndex + 1} / ${filteredFeed.length}`
+                : `0 / ${filteredFeed.length}`}
+            </span>
+
+
         <button className="btn export" onClick={handleExport}>
           <FaDownload size={14} />
            Export CSV
         </button>
         </div>
           <FilterBar filters={filters} setFilters={setFilters} />
-        {!isLive ? (
+        {/* {!isLive ? (
           <div className="empty-state">
             Click "Start Stream" to begin monitoring
           </div>
         ) : (
           <FeedList
+            key={filteredFeed.length} 
             feed={filteredFeed}
             selectedPost={selectedPost}
             onSelectPost={(post) => {
@@ -475,7 +553,25 @@ const handleModeration = async (action, postId, reason = "") => {
               }
             }}
           />
-          )}
+          )} */}
+          {feed.length === 0 ? (
+  <div className="empty-state">
+    Click "Start Stream" to begin monitoring
+  </div>
+) : (
+  <FeedList
+    key={filteredFeed.length}
+    feed={filteredFeed}
+    selectedPost={selectedPost}
+    onSelectPost={(post) => {
+      if (selectedPost?.id === post.id) {
+        setSelectedPost(null);
+      } else {
+        setSelectedPost(post);
+      }
+    }}
+  />
+)}
         </div>
 
         {/* MIDDLE PANEL */}

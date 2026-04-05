@@ -60,10 +60,14 @@ export function transformPost(post) {
     moderator_action: post.moderator_action || null,
 
     // ✅ VERDICT FIX
+    // verdict:
+    //   post.label === "bullying"
+    //     ? "BULLYING"
+    //     : "NON-BULLYING",
     verdict:
-      post.label === "bullying"
-        ? "BULLYING"
-        : "NON-BULLYING",
+      normalizeSeverity(post.severity) === "none"
+        ? "NON-BULLYING"
+        : "BULLYING",
 
     confidence: (post.confidence || 0) / 100,
 

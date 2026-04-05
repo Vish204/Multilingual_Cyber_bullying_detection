@@ -1071,3 +1071,9 @@ input::placeholder {
   color: #6b7280;
   font-style: italic;
 }
+
+.feed-count {
+  margin-left: 10px;
+  font-size: 13px;
+  color: #64748b;
+}

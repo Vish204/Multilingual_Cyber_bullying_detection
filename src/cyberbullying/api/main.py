@@ -125,6 +125,9 @@ def history(
 ):
 
     try:
+        if platform:
+            platform = platform.lower()
+
         data = get_history(
             limit=limit,
             platform=platform,
@@ -237,6 +240,10 @@ def export_csv(
 ):
 
     try:
+
+        if platform:
+            platform = platform.lower()
+
         # 🔥 Reuse SAME logic as history
         data = get_history(
             limit=limit,
@@ -259,7 +266,15 @@ def export_csv(
         # -----------------------------
         output = io.StringIO()
 
-        headers = data[0].keys()
+        # headers = data[0].keys()
+        
+        # 🔥 collect ALL possible keys
+        all_keys = set()
+
+        for row in data:
+            all_keys.update(row.keys())
+
+        headers = list(all_keys)
         writer = csv.DictWriter(output, fieldnames=headers)
         writer.writeheader()
 
