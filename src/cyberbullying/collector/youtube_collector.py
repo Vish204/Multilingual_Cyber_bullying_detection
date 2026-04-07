@@ -53,12 +53,13 @@ def fetch_comments(video_id, limit=3):
     comments = []
 
     for item in data.get("items", []):
-        text = clean_text(
-            item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-        )
+        snippet = item["snippet"]["topLevelComment"]["snippet"]
+        text = clean_text(snippet["textDisplay"])
 
         if text:
             comments.append({
+                "platform_post_id": item["id"], 
+                "platform_time": snippet["publishedAt"], # YouTube already gives ISO format!
                 "text": text,
                 "platform": "youtube",
                 "content_type": "comment"
@@ -126,7 +127,9 @@ def send_to_api(item):
     payload = {
         "text": item["text"],
         "platform": item["platform"],
-        "content_type": item["content_type"]
+        "content_type": item["content_type"],
+        "platform_post_id": item.get("platform_post_id"), 
+        "platform_time": item.get("platform_time")
     }
 
     try:

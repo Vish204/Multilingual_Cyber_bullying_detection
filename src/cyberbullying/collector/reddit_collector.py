@@ -2,6 +2,7 @@ import praw
 import requests
 import os
 from dotenv import load_dotenv
+import datetime
 
 from cyberbullying.collector.cleaning_utils import clean_text
 from cyberbullying.collector.language_utils import compute_language_distribution
@@ -33,6 +34,8 @@ def fetch_reddit_posts(limit=2):
 
         if text:
             data.append({
+                "platform_post_id": f"t3_{post.id}", # Reddit uses t3_ prefix for posts
+                "platform_time": datetime.datetime.fromtimestamp(post.created_utc, tz=datetime.timezone.utc).isoformat(),
                 "text": text,
                 "platform": "reddit",
                 "content_type": "post"
@@ -59,6 +62,8 @@ def fetch_reddit_comments(post_limit=2, comment_limit=2):
 
             if text:
                 data.append({
+                    "platform_post_id": f"t1_{comment.id}", # t1_ for comments
+                    "platform_time": datetime.datetime.fromtimestamp(comment.created_utc, tz=datetime.timezone.utc).isoformat(),
                     "text": text,
                     "platform": "reddit",
                     "content_type": "comment"
@@ -99,6 +104,8 @@ def fetch_targeted_reddit(language, limit=3):
 
         if text:
             data.append({
+                "platform_post_id": f"t3_{post.id}", # 🔥 FIXED
+                "platform_time": datetime.datetime.fromtimestamp(post.created_utc, tz=datetime.timezone.utc).isoformat(), # 🔥 FIXED
                 "text": text,
                 "platform": "reddit",
                 "content_type": "post"
@@ -116,7 +123,9 @@ def send_to_api(item):
     payload = {
         "text": item["text"],
         "platform": item["platform"],
-        "content_type": item["content_type"]
+        "content_type": item["content_type"],
+        "platform_post_id": item.get("platform_post_id"), 
+        "platform_time": item.get("platform_time")
     }
 
     try:

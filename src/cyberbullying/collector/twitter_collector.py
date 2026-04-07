@@ -27,7 +27,7 @@ def fetch_tweets(limit=6):
     params = {
         "query": "(india OR mumbai OR delhi OR भारत OR मुंबई OR दिल्ली OR தமிழ் OR বাংলা OR मराठी) -is:retweet",
         "max_results": min(limit, 50),
-        "tweet.fields": "lang,text"
+        "tweet.fields": "lang,text,created_at,id"
     }
 
     response = requests.get(SEARCH_URL, headers=headers, params=params )
@@ -46,6 +46,8 @@ def fetch_tweets(limit=6):
 
         if text:
             tweets.append({
+                "platform_post_id": tweet.get("id"),                 
+                "platform_time": tweet.get("created_at"),
                 "text": text,
                 "platform": "twitter",  
                 "content_type": "tweet"
@@ -111,7 +113,8 @@ def fetch_targeted_tweets(language, limit=3):
 
     params = {
         "query": f"{query} -is:retweet",
-        "max_results": limit
+        "max_results": limit,
+        "tweet.fields": "lang,text,created_at,id"
     }
 
     response = requests.get(SEARCH_URL, headers=headers, params=params )
@@ -124,6 +127,8 @@ def fetch_targeted_tweets(language, limit=3):
 
         if text:
             tweets.append({
+                "platform_post_id": tweet.get("id"),         
+                "platform_time": tweet.get("created_at"),
                 "text": text,
                 "platform": "twitter",
                 "content_type": "tweet"
@@ -141,7 +146,9 @@ def send_to_api(item):
     payload = {
         "text": item["text"],
         "platform": item["platform"],
-        "content_type": item["content_type"]
+        "content_type": item["content_type"],
+        "platform_post_id": item.get("platform_post_id"), 
+        "platform_time": item.get("platform_time")
     }
 
     try:
