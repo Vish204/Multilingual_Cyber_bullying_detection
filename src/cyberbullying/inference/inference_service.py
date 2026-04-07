@@ -1,7 +1,9 @@
 from cyberbullying.phase3_inference.load_models import load_all_models
 from cyberbullying.phase3_inference.predict_components import run_component_predictions
-from cyberbullying.phase3_inference.fusion_inference import compute_fusion_score
+from cyberbullying.phase3_inference.fusion_inference import compute_hybrid_fusion_score, KEYWORD_LANG_MAP
 
+import unicodedata
+import re
 from langdetect import detect
 
 # ------------------------------------------------
@@ -32,43 +34,66 @@ LANGUAGE_MAP = {
 }
 
 
-# def detect_language(text: str):
-#     try:
-#         if len(text.split()) < 3:
-#             return "unknown"
-#         lang_code = detect(text)
-#         return {
-#             "code": lang_code,
-#             "name": LANGUAGE_MAP.get(lang_code, "unknown")
-#         }
-#     except:
-#         return "unknown"
-
 def detect_language(text: str):
-
     try:
-        # 🔹 1. Handle empty
+        # 1. Handle empty strings
         if not text or len(text.strip()) == 0:
             return {"code": "unknown", "name": "unknown"}
 
-        # 🔹 2. SHORT TEXT FIX (VERY IMPORTANT)
-        if len(text.split()) <= 3:
-            return {"code": "en", "name": "english"}
+        text_lower = text.lower()
+        words = set(re.findall(r"\w+", text_lower))
 
-        # 🔹 3. ASCII CHECK (very effective)
+        # 2. THE EMOJI / SYMBOL SAFETY NET (Fix 5)
+        # If there are no actual letters/numbers (e.g., text is just "😂😂😂")
+        if len(words) == 0:
+            return {"code": "unknown", "name": "unknown"}
+
+        # 3. THE ROMANIZED / HINGLISH FIX
         if text.isascii():
+            for w in words:
+                # Fix 1: Safer dictionary access
+                detected_lang = KEYWORD_LANG_MAP.get(w)
+                if detected_lang:
+                    if detected_lang.lower() == "english":
+                        return {"code": "en", "name": "english"}
+                    else:
+                        # Fix 2: Clean, DB-friendly strings
+                        return {"code": "mix", "name": f"{detected_lang.lower()}_romanized"}
+            
+            # If no regional words found, default to English
             return {"code": "en", "name": "english"}
 
-        # 🔹 4. Normal detection
-        from langdetect import detect
-        code = detect(text)
+        # 4. THE UNICODE CHECK (For Native Scripts)
+        # Note: We use 'return' to act as an instant 'break' when a script is found.
+        # This prevents the loop from failing if it hits an emoji first.
+        for char in text:
+            if not char.isascii():
+                name = unicodedata.name(char, "").upper()
+                
+                if "DEVANAGARI" in name:
+                    for w in words:
+                        detected_lang = KEYWORD_LANG_MAP.get(w)
+                        if detected_lang:
+                            detected_lang = detected_lang.lower()
+                            code = "hi" if "hindi" in detected_lang else "mr"
+                            return {"code": code, "name": detected_lang}
+                    return {"code": "hi/mr", "name": "hindi_or_marathi"}
+                
+                elif "BENGALI" in name: return {"code": "bn", "name": "bengali"}
+                elif "TAMIL" in name: return {"code": "ta", "name": "tamil"}
+                elif "TELUGU" in name: return {"code": "te", "name": "telugu"}
+                elif "GUJARATI" in name: return {"code": "gu", "name": "gujarati"}
+                elif "ARABIC" in name: return {"code": "ur", "name": "urdu"}
 
+        # 5. Fallback to langdetect if everything else fails
+        code = detect(text)
         return {
             "code": code,
             "name": LANGUAGE_MAP.get(code, "unknown")
         }
 
     except Exception:
+        # Failsafe so the API never crashes
         return {"code": "unknown", "name": "unknown"}
 
 # ------------------------------------------------
@@ -109,10 +134,18 @@ def predict_post(text: str):
     # ---------------------------
     # Fusion Score
     # ---------------------------
-    fusion_score = compute_fusion_score(
+    # fusion_score = compute_fusion_score(
+    #     p_cb,
+    #     p_sarcasm,
+    #     (p_aggression + p_distress)
+    # )
+    fusion_score, calibrated_p_cb = compute_hybrid_fusion_score(
         p_cb,
         p_sarcasm,
-        (p_aggression + p_distress)
+        p_aggression,
+        p_distress,
+        p_neutral,
+        text
     )
 
     # ---------------------------
@@ -133,9 +166,18 @@ def predict_post(text: str):
         severity = "none"
 
     # ---------------------------
-    # Alert Flag (NEW)
+    # Alert Flag (Trust & Safety Logic)
     # ---------------------------
-    alert = True if severity == "severe" else False
+    # Alerts are reserved for extreme cases to prevent moderator "Alarm Fatigue".
+    
+    is_extreme_threat = p_distress > 0.65
+    is_aggressive_attack = (calibrated_p_cb >= 0.85 and p_aggression > 0.70)
+    is_absolute_certainty = fusion_score > 0.90
+    
+    if is_extreme_threat or is_aggressive_attack or is_absolute_certainty:
+        alert = True
+    else:
+        alert = False
 
     # ---------------------------
     # Language Detection (NEW)
@@ -167,7 +209,7 @@ def predict_post(text: str):
         "alert": alert,
 
         "components": {
-            "cyberbullying": round(p_cb, 4),
+            "cyberbullying": round(calibrated_p_cb, 4),
             "sarcasm": round(p_sarcasm, 4),
             "neutral": round(p_neutral, 4),
             "aggression": round(p_aggression, 4),

@@ -13,9 +13,15 @@ print(KEYWORDS_DIR)
 SINGLE_WORDS = set()
 PHRASES = []
 
+# NEW: Dictionary to map words to their languages
+KEYWORD_LANG_MAP = {}
+
 def load_keywords():
     for file in os.listdir(KEYWORDS_DIR):
         if file.endswith(".json"):
+            # Extract language name (e.g., "hindi.json" -> "Hindi")
+            lang_name = file.replace(".json", "").capitalize()
+
             with open(KEYWORDS_DIR / file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
@@ -28,8 +34,11 @@ def load_keywords():
                             PHRASES.append(k)   # no regex
                         else:
                             SINGLE_WORDS.add(k)
+                        
+                        #  NEW: Populate the language map
+                        KEYWORD_LANG_MAP[k] = lang_name
 
-# 🔥 load once
+#  load once
 load_keywords()
 # ----------------------------------------------------
 # Fusion Logic
@@ -75,11 +84,17 @@ def keyword_match(text):
 def compute_hybrid_fusion_score(p_cb, p_sarcasm, p_aggression, p_distress, p_neutral, text=None):
 
    
-# 1. RELAXED OOV FAILSAFE (Fixes Bengali, Urdu, Telugu)
+# 1. TIERED OOV FAILSAFE (Restores Mild, Moderate, Severe)
     # Lowered the aggression threshold from 0.50 to 0.35 because 
     # 0.44 aggression in a 3-class model is actually a very strong signal.
-    if p_cb < 0.40 and p_aggression > 0.30:
-        p_cb = 0.85
+    # if p_cb < 0.25: was giving problem in marathi and some other language
+    if p_cb < 0.36:
+        if p_aggression > 0.60:
+            p_cb = 0.90  # High Aggression -> Calibrate High
+        elif p_aggression > 0.45:
+            p_cb = 0.85  # Moderate Aggression -> Calibrate Mid
+        elif p_aggression > 0.30:
+            p_cb = 0.65  # Borderline Aggression -> Calibrate Low (Results in "Mild")
     
 # 2. MALICIOUS SARCASM RULE (Fixes "jump off a building")
     # If Sarcasm is huge (>0.70) and the text isn't purely friendly/neutral,
@@ -87,15 +102,31 @@ def compute_hybrid_fusion_score(p_cb, p_sarcasm, p_aggression, p_distress, p_neu
     if p_sarcasm > 0.70 and p_neutral < 0.55:
         p_cb = 0.85
 
+# PROBLEM OF SHORT WORD LIKE "CHUTIYA"    
+# # 3. KEYWORD MATCH (Yes, absolutely keep this!)
+#     # This is your ultimate safety net for obvious slurs.
+#     if text and keyword_match(text) and p_neutral < 0.60:
+#         p_cb = 1.0
     
-# 3. KEYWORD MATCH (Yes, absolutely keep this!)
-    # This is your ultimate safety net for obvious slurs.
-    if text and keyword_match(text) and p_neutral < 0.60:
-        p_cb = 1.0
-    
+
+# 3. EXACT KEYWORD MATCH (The Safety Net)
+    # If it's a very short text (<= 3 words), ban the slur immediately (ignores Neutral).
+    # If it's a longer sentence, only ban it if Neutral is less than 0.95.
+    word_count = len(text.split())
+    print(f"DEBUG - Did we find a keyword?: {keyword_match(text)}")
+
+    if text and keyword_match(text):
+        if word_count <= 3:
+            p_cb = max(p_cb, 0.8)  # Instant catch for single-word slurs like "Chutiya"
+        elif p_neutral < 0.95:
+            p_cb = 0.85  # Catch for slurs in sentences, unless it's overwhelmingly friendly
+
+
 # 4. DISTRESS MULTIPLIER
-    if p_distress > 0.50:
-        p_cb = min(1.0, p_cb + 0.15)
+    if p_distress > 0.70 and p_aggression > 0.30:
+        p_cb = max(p_cb, 0.85)
+    elif p_distress > 0.50:
+        p_cb = min(1.0, p_cb + 0.25)
 
 
 
@@ -171,10 +202,6 @@ def run_fusion(text_list, models, threshold=0.5):
 
     df["fusion_score"] = fusion_scores
     df["prediction"] = labels
-    print(f"Text: {row['text']}")
-
-    print(f"CB: {row['calibrated_p_cb']}, Sarcasm: {row['p_sarcasm']}, Aggression: {row['p_aggression']}, Distress: {row['p_distress']}")
-    print(f"Hybrid Fusion Score: {score}\n")
 
     return df
 
