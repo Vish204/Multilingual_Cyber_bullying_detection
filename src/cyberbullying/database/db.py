@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from datetime import datetime, timezone
 from bson import ObjectId
+from datetime import datetime
 
 
 # ------------------------------------------------
@@ -12,36 +13,79 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["cyberbullying_db"]
 collection = db["predictions"]
 
+training_collection = db["curated_data"] # The Human-in-the-Loop ML dataset
+
+# 🔥 Create TTL Index (Delete after 45 days / 3888000 seconds)
+# partialFilterExpression ensures we NEVER delete posts where flags.saved == True
+try:
+    collection.create_index(
+        "created_at",
+        expireAfterSeconds=3888000,
+        partialFilterExpression={"flags.saved": False}
+    )
+    print("Database indices verified.")
+except Exception as e:
+    print(f"Index creation skipped/failed: {e}")
 
 # ------------------------------------------------
 # 🔹 Save Prediction
 # ------------------------------------------------
 
-def save_prediction(text, result, platform="manual", content_type="text"):
+# ------------------------------------------------
+# 🔹 Save Prediction (V2 Schema)
+# ------------------------------------------------
+
+def save_prediction(text, result, platform="manual", content_type="text", platform_time=None, latency_data=None, platform_post_id=None):
+    
+    # Defaults for direct API calls
+    if latency_data is None: latency_data = {}
+    if platform_time is None: platform_time = datetime.now(timezone.utc)
 
     document = {
         "text": text,
         "platform": platform,
+        "platform_post_id": platform_post_id,
         "content_type": content_type,
+        
+        # Timestamps
+        "created_at": datetime.now(timezone.utc),
+        "platform_time": platform_time,
 
-        "label": result.get("label"),
-        "severity": result.get("severity"),
-        "confidence": result.get("confidence"),
+        # Core ML Output
+        "prediction": {
+            "label": result.get("label"),
+            "severity": result.get("severity"),
+            "confidence": result.get("confidence")
+        },
 
-        "emotion": result.get("emotion"),
-        "sarcasm": result.get("sarcasm"),
-        "language": result.get("language"),
-        "alert": result.get("alert"),
+        # Explainability & Context
+        "signals": {
+            "sarcasm": result.get("sarcasm"),
+            "emotions": result.get("emotions", []),      # Clean array: [{"label": "anger", "score": 0.85}]
+            "explanation": result.get("explanation"),
+            "components": {
+                "base_cyberbullying": result.get("components", {}).get("cyberbullying"),
+            }   # The calibrated base scores
+        },
 
-        "components": result.get("components"),
-        "emotions": result.get("emotions"),
-        "explanation": result.get("explanation"),
+        # System & Review Flags
+        "flags": {
+            "alert": result.get("alert", False),
+            "reviewed": False,
+            "saved": False,                              # The flag for ML retraining
+            "language": result.get("language")
+        },
 
-        "moderator_action": None,
-        "reviewed": False,
+        # Human-in-the-loop action
+        "moderator": {
+            "action": None,
+            "reason": None
+        },
 
-        "timestamp": datetime.now(timezone.utc)
+        # System tracking
+        "latency": latency_data
     }
+    
     print("INSERTING:", document)
     collection.insert_one(document)
 
@@ -50,7 +94,6 @@ def save_prediction(text, result, platform="manual", content_type="text"):
 # 🔹 Get History
 # ------------------------------------------------
 
-from datetime import datetime
 
 def get_history(
     limit=50,
@@ -75,19 +118,19 @@ def get_history(
         query["platform"] = platform
 
     if severity:
-        query["severity"] = severity
+        query["prediction.severity"] = severity
 
     if reviewed is not None:
-        query["reviewed"] = reviewed
+        query["flags.reviewed"] = reviewed
 
     if alert is not None:
-        query["alert"] = alert
+        query["flags.alert"] = alert
 
     if moderator_action:
-        query["moderator_action"] = moderator_action
+        query["moderator.action"] = moderator_action
 
     if language:
-        query["language.name"] = language
+        query["flags.language.name"] = language
 
     if content_type:
         query["content_type"] = content_type
@@ -97,13 +140,13 @@ def get_history(
     # ------------------------
 
     if start_date or end_date:
-        query["timestamp"] = {}
+        query["created_at"] = {}
 
         if start_date:
-            query["timestamp"]["$gte"] = datetime.fromisoformat(start_date)
+            query["created_at"]["$gte"] = datetime.fromisoformat(start_date)
 
         if end_date:
-            query["timestamp"]["$lte"] = datetime.fromisoformat(end_date)
+            query["created_at"]["$lte"] = datetime.fromisoformat(end_date)
 
     # ------------------------
     # Execute query
@@ -112,61 +155,98 @@ def get_history(
     results = list(
         collection
         .find(query)
-        .sort("timestamp", -1)
+        .sort("created_at", -1)
         .limit(limit)
     )
 
-    # Convert ObjectId → string
+    # Convert ObjectId -> string AND flatten the nested data for the frontend
+    formatted_results = []
+    
     for item in results:
-        item["_id"] = str(item["_id"])
+        flat_item = {
+            "id": str(item.pop("_id")),
+            "text": item.get("text"),
+            "platform": item.get("platform"),
+            "timestamp": item.get("created_at"), # Map created_at back to timestamp for UI
+            
+            # Flattened ML Data
+            "label": item.get("prediction", {}).get("label"),
+            "severity": item.get("prediction", {}).get("severity"),
+            "confidence": item.get("prediction", {}).get("confidence"),
+            "sarcasm": item.get("signals", {}).get("sarcasm"),
+            
+            # Flattened Flags
+            "alert": item.get("flags", {}).get("alert"),
+            "reviewed": item.get("flags", {}).get("reviewed"),
+            "saved": item.get("flags", {}).get("saved"),
 
-    return results
+            "language": item.get("flags", {}).get("language", {}).get("name", "unknown"),
+            
+            # Flattened Moderator Actions
+            "moderator_action": item.get("moderator", {}).get("action")
+        }
+        formatted_results.append(flat_item)
+
+    return formatted_results
 
 # ------------------------------------------------
 # 🔹 Update Moderator Action
 # ------------------------------------------------
 
-def update_moderation_action(record_id, action, reason=" "):
+# ------------------------------------------------
+# 🔹 Update Moderator Action & Human-in-the-Loop
+# ------------------------------------------------
 
+def update_moderation_action(record_id, action, reason="", saved=False):
+
+    # 1. Update the main collection flags
+    update_fields = {
+        "flags.reviewed": True,
+        "flags.saved": saved,
+        "moderator.action": action,
+        "moderator.reason": reason
+    }
+    
     result = collection.update_one(
         {"_id": ObjectId(record_id)},
-        {
-            "$set": {
-                "moderator_action": action,
-                "reviewed": True,
-                "reason": reason
-            }
-        }
+        {"$set": update_fields}
     )
+
+    # 2. 🔥 The Human-in-the-Loop feature (Data Curation)
+    # If the moderator wants to save it for retraining, move it to the curated collection.
+    if saved:
+        doc = collection.find_one({"_id": ObjectId(record_id)})
+        # We only want to train the ML on actual toxic posts, so verify the label
+        if doc and doc["prediction"]["label"] == "cyberbullying":
+            # Use replace_one with upsert=True to prevent duplicates if clicked twice
+            training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
 
     return result.modified_count
 
 ### analytics functions below ###
 
 
+### analytics functions below ###
+
 # ------------------------------------------------
 # Severity Analytics
 # ------------------------------------------------
 def get_severity_stats():
-
     pipeline = [
         {
             "$group": {
-                "_id": "$severity",
+                "_id": "$prediction.severity",  # 🔥 FIXED NESTED PATH
                 "count": {"$sum": 1}
             }
         }
     ]
-
     results = list(collection.aggregate(pipeline))
-
-    return {item["_id"]: item["count"] for item in results}
+    return {item["_id"]: item["count"] for item in results if item["_id"]}
 
 # ------------------------------------------------
-# Platform Analytics
+# Platform Analytics (Unchanged)
 # ------------------------------------------------
 def get_platform_stats():
-
     pipeline = [
         {
             "$group": {
@@ -175,23 +255,20 @@ def get_platform_stats():
             }
         }
     ]
-
     results = list(collection.aggregate(pipeline))
-
-    return {item["_id"]: item["count"] for item in results}
+    return {item["_id"]: item["count"] for item in results if item["_id"]}
 
 # ------------------------------------------------
 # Trends (Time-based)
 # ------------------------------------------------
 def get_trend_stats():
-
     pipeline = [
         {
             "$group": {
                 "_id": {
                     "$dateToString": {
                         "format": "%Y-%m-%d",
-                        "date": "$timestamp"
+                        "date": "$created_at"  # 🔥 FIXED FROM "timestamp"
                     }
                 },
                 "count": {"$sum": 1}
@@ -199,27 +276,22 @@ def get_trend_stats():
         },
         {"$sort": {"_id": 1}}
     ]
-
     results = list(collection.aggregate(pipeline))
-
     return results
 
 # ------------------------------------------------
-#language analytics
+# Language Analytics
 # ------------------------------------------------
 def get_language_distribution():
-
     pipeline = [
         {
             "$group": {
-                "_id": "$language.name",
+                "_id": "$flags.language.name",  # 🔥 FIXED NESTED PATH
                 "count": {"$sum": 1}
             }
         }
     ]
-
     results = list(collection.aggregate(pipeline))
-
     return {
         item["_id"] if item["_id"] else "unknown": item["count"]
         for item in results
@@ -227,45 +299,45 @@ def get_language_distribution():
 
 
 
-# ------------------------------------------------
-# Export Data (for CSV/Excel)
-# ------------------------------------------------
-def export_data(limit, platform=None, severity=None, reviewed=None,
-                label=None, alert=None, language=None, content_type=None):
+# # ------------------------------------------------
+# # Export Data (for CSV/Excel)
+# # ------------------------------------------------
+# def export_data(limit, platform=None, severity=None, reviewed=None,
+#                 label=None, alert=None, language=None, content_type=None):
 
-    query = {}
+#     query = {}
 
-    if platform:
-        query["platform"] = platform
+#     if platform:
+#         query["platform"] = platform
 
-    if severity:
-        query["severity"] = severity
+#     if severity:
+#         query["severity"] = severity
 
-    if reviewed is not None:
-        if reviewed == False:
-            query["$or"] = [
-                {"reviewed": False},
-                {"reviewed": {"$exists": False}}
-            ]
-        else:
-            query["reviewed"] = True
+#     if reviewed is not None:
+#         if reviewed == False:
+#             query["$or"] = [
+#                 {"reviewed": False},
+#                 {"reviewed": {"$exists": False}}
+#             ]
+#         else:
+#             query["reviewed"] = True
 
-    if label:
-        query["label"] = label
+#     if label:
+#         query["label"] = label
 
-    if alert is not None:
-        query["alert"] = alert
+#     if alert is not None:
+#         query["alert"] = alert
 
-    if language:
-        query["language"] = language
+#     if language:
+#         query["language"] = language
 
-    if content_type:
-        query["content_type"] = content_type
+#     if content_type:
+#         query["content_type"] = content_type
 
-    results = list(
-        collection.find(query, {"_id": 0})
-        .sort("timestamp", -1)
-        .limit(limit)
-    )
+#     results = list(
+#         collection.find(query, {"_id": 0})
+#         .sort("timestamp", -1)
+#         .limit(limit)
+#     )
 
-    return results
+#     return results
