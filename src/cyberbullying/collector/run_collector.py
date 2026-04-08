@@ -1,5 +1,5 @@
 # run_collector.py
-
+import time
 import random
 import os
 from dotenv import load_dotenv
@@ -16,17 +16,18 @@ load_dotenv()
 
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 # ---------------------------
-# 🔹 GLOBAL DEDUP
+# 🔹 GLOBAL DEDUP (changed to use ID)
 # ---------------------------
-seen_hashes = set()
+seen_ids = set()
 
-def is_duplicate(text):
-    key = text.strip().lower()
+def is_duplicate(item):
+    # Try to get the real ID, fallback to text if the ID is missing
+    post_id = item.get("platform_post_id") or item.get("text", "").strip().lower()
 
-    if key in seen_hashes:
+    if post_id in seen_ids:
         return True
 
-    seen_hashes.add(key)
+    seen_ids.add(post_id)
     return False
 
 
@@ -115,26 +116,38 @@ def send_item(item):
     return {"error": "Unknown platform"}
 
 
+
 # ---------------------------
-# 🔹 SINGLE RUN FUNCTION
+# 🔹 SINGLE RUN FUNCTION (Advanced Logging added)
 # ---------------------------
 def run_once():
-
     results = []
-
-    data = fetch_all_platforms()
-
-    # ✅ LIMIT TOTAL FETCHED
-    data = data[:40]
     
-    MAX_ITEMS = 15   # or 20 
+    print("\n" + "="*50)
+    print(f"🚀 STARTING DATA COLLECTOR | DEMO_MODE: {DEMO_MODE}")
+    print("="*50)
+
+    # ⏱️ 1. TRACK FETCH TIME
+    start_fetch = time.time()
+    data = fetch_all_platforms()
+    fetch_ms = round((time.time() - start_fetch) * 1000, 2)
+    
+    print(f"📥 Fetched {len(data)} items across platforms in {fetch_ms} ms")
+    print("-" * 50)
+
+    # ⏱️ 2. TRACK PROCESSING TIME
+    start_process = time.time()
+    
+    # ✅ LIMIT TOTAL PROCESSED
+    MAX_ITEMS = 15  
+    processed_count = 0
 
     for item in data:
-
-        if len(results) >= MAX_ITEMS:
+        if processed_count >= MAX_ITEMS:
             break
 
-        if is_duplicate(item["text"]):
+        # 🔥 Duplicate check using the new ID logic
+        if is_duplicate(item):
             continue
 
         result = send_item(item)
@@ -145,9 +158,26 @@ def run_once():
             "content_type": item["content_type"],
             "result": result
         })
+        processed_count += 1
+
+    # ⏱️ 3. CALCULATE AVERAGES
+    process_ms = round((time.time() - start_process) * 1000, 2)
+    avg_per_post = round(process_ms / max(1, processed_count), 2)
+
+    print("-" * 50)
+    print(f"✅ COLLECTOR RUN COMPLETE")
+    print(f"⏱️ Total Fetch Time:      {fetch_ms} ms")
+    print(f"⏱️ Total Processing Time: {process_ms} ms")
+    print(f"⚡ Average API Latency:   {avg_per_post} ms / post")
+    print("=" * 50 + "\n")
 
     return {
         "total_fetched": len(data),
-        "processed": len(results),
-        "results": results[:10]   # limit preview
+        "processed": processed_count,
+        "latency_metrics": {
+            "fetch_ms": fetch_ms,
+            "processing_ms": process_ms,
+            "avg_per_post_ms": avg_per_post
+        },
+        "results": results[:5]   # limit preview for API response
     }
