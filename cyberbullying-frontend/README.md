@@ -1,352 +1,136 @@
-# 🚀 Cyberbullying Detection Frontend
+# 🛡️ Cyberbullying Detection System - Frontend
 
-## 📌 Overview
+## 📌 Project Overview
+This is the **Frontend User Interface** for the AI-powered Cyberbullying Detection & Moderation System. It is designed as a specialized dashboard that bridges the gap between complex Machine Learning models and human moderators.
 
-This is the **frontend UI** for the Cyberbullying Detection System.
+The application currently supports a **"Human-in-the-Loop"** workflow, providing a UI framework for moderators to interpret AI decisions through **Explainable AI (XAI)** signals and execute platform safety actions.
 
-It is designed as a **real-time moderation dashboard** that allows moderators to:
-
-* View incoming social media content
-* Analyze AI predictions (bullying, emotion, sarcasm)
-* Understand model decisions (Explainable AI - SHAP)
-* Take moderation actions (ignore, delete, report)
-* Filter and manage content efficiently
+### 🎯 Key Objectives
+* **Transparency:** A UI framework to show moderators *why* a post was flagged using SHAP-inspired token highlighting.
+* **Signal Integration:** Visualization of multi-model outputs including Bullying Verdicts, Emotion detection (Aggression/Distress), and Sarcasm.
+* **Workflow Efficiency:** A specialized 3-panel layout designed for rapid content review.
+* **Modular Design:** A clean directory structure allowing for the future integration of various NLP backends and social platform data.
 
 ---
 
 ## 🧱 Tech Stack
-
-* React (UI Framework)
-* Vite (Fast build tool)
-* JavaScript (ES6+)
-* CSS (custom styling)
+* **Framework:** `React 19.x` (Functional Components & Hooks)
+* **Build Tool:** `Vite 8.x`
+* **Routing:** `React Router DOM 7.x`
+* **Icons:** `react-icons` (Social platforms & UI) & `lucide-react`
+* **Styling:** Custom CSS3 with flex-based architecture and severity-coded color palettes.
+* **Language:** JavaScript (ES6+)
 
 ---
 
 ## ⚙️ Project Setup
 
-### 1. Create frontend using Vite
+### 1. Prerequisites
+* **Node.js:** `>= 20.19.0` (Vite requirement)
+* **Backend:** Ensure the Cyberbullying API is accessible (default `http://localhost:8000`)
 
+### 2. Installation
 ```bash
-npm create vite@latest cyberbullying-frontend
-```
-
-Select:
-
-* React
-* JavaScript
-
----
-
-### 2. Install dependencies
-
-```bash
+# Enter the project directory
 cd cyberbullying-frontend
+
+# Install dependencies
 npm install
-```
+````
 
----
-
-### 3. Run development server
+### 3. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-App runs at:
-
-```
-http://localhost:5173/
-```
+The application runs by default at: `http://localhost:5173/`
 
 ---
 
-## ⚠️ Node.js Issue & Fix
+## ⚠️ Node.js Versioning Note
 
-### Problem:
+If you encounter errors during `npm run dev`, ensure your Node version is updated.
 
-Vite requires:
-
-```
-Node >= 20.19
-```
-
-### Your version:
-
-```
-v20.17.0 ❌
-```
-
-### Fix:
-
-Update Node.js to latest (e.g. v24.x)
-
-Then reinstall:
-
-```bash
-rm -rf node_modules package-lock.json
-npm install
-npm run dev
-```
+* **Requirement:** `Node >= 20.19`
+* **Recommended:** `v24.x` (Latest)
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Architecture
 
-### Root
+### 📂 Root Directory
 
-```
-cyberbullying-frontend/
-│
-├── index.html        # Entry HTML
-├── package.json      # Dependencies & scripts
-├── vite.config.js    # Vite config
-├── public/           # Static assets
-├── src/              # Main application code
-```
+| File/Folder      | Description                                                        |
+| :--------------- | :----------------------------------------------------------------- |
+| `index.html`     | The Single Page Application (SPA) entry point.                     |
+| `package.json`   | Project metadata, scripts, and `React 19` / `Vite 8` dependencies. |
+| `vite.config.js` | Vite-specific build and plugin configuration.                      |
+| `src/`           | The primary application source code.                               |
 
----
+### 📂 The `src/` Directory Breakdown
 
-## 📁 src/
-
-```
+```text
 src/
+├── App.jsx           # Entry component (Renders AppRoutes)
+├── main.jsx          # React DOM entry point
+├── routes.jsx        # Route definitions for the SPA
 │
-├── App.jsx           # Root component
-├── main.jsx          # Entry point (React mount)
-├── routes.jsx        # Page routing
-│
-├── pages/            # Page-level components
-├── layouts/          # Layout structure (UI skeleton)
-├── components/       # Reusable UI components
-├── services/         # API calls (future)
-├── hooks/            # Custom hooks
-├── utils/            # Helper functions
+├── pages/            # View-level components (Dashboard, Moderation)
+├── layouts/          # Structural UI skeletons (Moderation 3-panel layout)
+├── components/       # UI Molecules (Common, Post, Feed, Explainability)
+├── services/         # API logic (api.js) and Data Normalization (transform.js)
+├── hooks/            # [Future-Ready] Placeholder for custom hooks
+└── utils/            # [Future-Ready] Placeholder for utility helpers
 ```
 
 ---
 
-## 📁 pages/
+## 🧠 Core Feature: Moderation Workflow (Phase 4)
 
-```
-pages/
-│
-├── Dashboard.jsx
-├── Moderation.jsx
-├── History.jsx
-├── Analysis.jsx
-```
+The **Moderation Page** utilizes a **3-panel architecture** to manage the content review cycle:
 
-👉 Each file represents a **full page**
+### 1. [LEFT] Feed Panel (`components/feed`)
 
----
+* **Manual Fetch/Toggle:** Features a "Start Stream" toggle state intended to trigger batch data collection.
+* **Filtering:** A robust system to sort content by Platform, Severity, Language, and Keyword Search.
+* **Selection:** Contextual selection logic where clicking a post populates the detail view.
 
-## 📁 layouts/
+### 2. [MIDDLE] Post Details (`components/post` & `explainability`)
 
-```
-layouts/
-│
-├── ModerationLayout.jsx   # Main 3-panel layout
-├── moderation.css         # Styling
-```
+* **AI Analysis:** Displays the Verdict (BULLYING/SAFE) and Confidence bars derived from the Student XGBoost model.
+* **XAI UI:** Visual implementation of **SHAP-inspired highlights** and feature influence lists (currently utilizing demo data for visualization).
+* **Action Center:** Moderators can **Ignore**, **Delete**, or **Report** (Report includes an optional input field for reasoning).
 
-👉 Layout defines **structure of the page**
+### 3. [RIGHT] Context Panel (`components/context`)
+
+* **Moderation Guide:** Static reference system explaining severity scales and emotion labels to ensure moderator consistency.
 
 ---
 
-## 📁 components/
+## 🔄 Data Handling & API Integration
 
-### 🔹 common/
-
-Reusable UI
-
-* FilterBar.jsx → filtering system
+* **State Ownership:** `ModerationLayout.jsx` acts as the primary controller, holding the master `feed` state.
+* **Transformation Layer:** `services/transform.js` normalizes backend responses (e.g., converting 0-100 scores to 0-1 percentages) before they reach UI components.
+* **API Communication:** `services/api.js` manages asynchronous requests to backend endpoints including `/history`, `/moderate`, and `/collect`.
 
 ---
 
-### 🔹 feed/
-
-Left panel
-
-* FeedList.jsx → list of posts
-* FeedItem.jsx → single post
-
----
-
-### 🔹 post/
-
-Middle panel
-
-* PostDetails.jsx → main content
-* PredictionCard.jsx → AI output
-* EmotionTag.jsx → emotion display
-* SarcasmIndicator.jsx → sarcasm score
-* SeverityBadge.jsx → severity color
-* ActionButtons.jsx → moderation actions
-
----
-
-### 🔹 explainability/
-
-Explainable AI
-
-* ShapHighlights.jsx → word highlighting
-* FeatureList.jsx → top features
-* ContextSummary.jsx → reasoning
-
----
-
-### 🔹 context/
-
-Right panel
-
-* RightPanel.jsx → extra info
-
----
-
-## 🧠 Core Feature: Live Moderation Page
-
-This is the **main working page**.
-
-### Layout:
-
-```
-[ Feed ] | [ Post Details ] | [ Context ]
-```
-
----
-
-## 🔹 LEFT PANEL (Feed)
-
-* Shows posts
-* Click → selects post
-* Uses filters
-
----
-
-## 🔹 MIDDLE PANEL (PostDetails)
-
-Displays:
-
-* Full text
-* AI prediction
-* Emotion & sarcasm
-* Explainability (SHAP)
-* Moderation buttons
-
----
-
-## 🔹 RIGHT PANEL (Context)
-
-* Additional info (lightweight)
-
----
-
-## ⚙️ Moderation Actions
-
-* Ignore
-* Delete
-* Report
-
-👉 Updates feed dynamically
-
----
-
-## 🔍 Filtering System
-
-### Basic Filters
-
-* Platform
-* Severity
-* Language
-* Search
-
----
-
-### Advanced Filters (Toggle)
-
-* Reviewed
-* Alert
-* Content Type
-* Moderator Action
-
----
-
-## 🧠 Key React Concepts Used
-
-### 1. Lifting State Up
-
-State stored in:
-
-```
-ModerationLayout.jsx
-```
-
-Shared between:
-
-* FeedList
-* PostDetails
-
----
-
-### 2. Props
-
-Data passed via:
-
-```
-onSelectPost
-onAction
-```
-
----
-
-### 3. Conditional Rendering
-
-```jsx
-{showAdvanced && <AdvancedFilters />}
-```
-
----
-
-### 4. Event-driven UI
-
-* Click → update state → UI updates
-
----
-
-## 🚀 Future Integration
-
-Frontend will connect to backend APIs:
-
-* `/collect` → fetch data
-* `/moderate` → actions
-* `/history` → filtering
-* `/analysis` → analytics
-
----
-
-## 🎯 Goal
-
-This UI is designed to demonstrate:
-
-* Real-time moderation workflow
-* Multilingual detection
-* Emotion-aware AI
-* Explainable AI (SHAP)
-* Efficient inference (distilled models)
+## 🎯 Current Project Status
+
+* [x] **Core Dashboard:** Operational high-level overview and navigation cards.
+* [x] **3-Panel Layout:** Completed flex-based structural implementation.
+* [x] **AI Signal UI:** Finished visualization for confidence, emotion, and sarcasm.
+* [!] **History & Analysis:** Currently **Placeholder pages** (UI headers only).
+* [!] **Live Ingestion:** Stream toggle is implemented in the UI; backend-wide live ingestion integration is aspirational for future phases.
 
 ---
 
 ## 🧾 Summary
 
-This frontend is:
+This frontend is a **Modular** and **Research-aligned** dashboard. It is intentionally designed with future-ready folders (`hooks`, `utils`) and a scalable component library, making it a robust foundation for product-level AI moderation.
 
-* Modular
-* Scalable
-* Research-aligned
-* Product-level design
 
----
 
 
 
