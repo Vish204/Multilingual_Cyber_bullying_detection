@@ -181,6 +181,8 @@ def get_history(
             "saved": item.get("flags", {}).get("saved"),
 
             "language": item.get("flags", {}).get("language", {}).get("name", "unknown"),
+
+            "explanation": item.get("signals", {}).get("explanation"),
             
             # Flattened Moderator Actions
             "moderator_action": item.get("moderator", {}).get("action")

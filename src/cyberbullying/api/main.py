@@ -99,15 +99,25 @@ def predict(request: TextRequest):
         # 🔹 Step 2: CONDITIONAL SHAP (The UI Fix)
         # Only run SHAP if the post is actually flagged as bullying!
         if result["label"] == "cyberbullying":
-            explanation = explain_text(request.text)
+            shap_start_time = time.time()
+
+            explanation = explain_text(request.text, prediction_data=result)
             result["explanation"] = explanation
+
+            shap_time_ms = round((time.time() - shap_start_time) * 1000, 2)
+            result["latency"]["shap_ms"] = shap_time_ms
+            result["latency"]["total_ms"] = round(model_time_ms + shap_time_ms, 2) # Total Time
+    
         else:
             # If it's safe, don't waste server power. Just return empty arrays.
             result["explanation"] = {
+                "summary": "Flagged as safe by baseline models.",
                 "trigger_words": [],
                 "counter_words": [],
-                "supporting_signals": {}
+                "supporting_context": {}
             }
+            result["latency"]["shap_ms"] = 0
+            result["latency"]["total_ms"] = model_time_ms
 
         print("Incoming:", request.platform, request.content_type)
         
