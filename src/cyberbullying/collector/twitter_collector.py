@@ -25,7 +25,8 @@ def fetch_tweets(limit=6):
 
 
     params = {
-        "query": "(india OR mumbai OR delhi OR भारत OR मुंबई OR दिल्ली OR தமிழ் OR বাংলা OR मराठी) -is:retweet",
+        # "query": "(india OR mumbai OR delhi OR भारत OR मुंबई OR दिल्ली OR தமிழ் OR বাংলা OR मराठी) -is:retweet",
+        "query": "(boycott OR scam OR overrated OR worst OR fake OR nepotism OR bakwas OR chhapri) -is:retweet",
         "max_results": min(limit, 50),
         "tweet.fields": "lang,text,created_at,id"
     }

@@ -50,7 +50,8 @@ def fetch_reddit_posts(limit=2):
 def fetch_reddit_comments(post_limit=2, comment_limit=2):
 
     data = []
-    subreddit = reddit.subreddit("india")
+    # subreddit = reddit.subreddit("india")
+    subreddit = reddit.subreddit("BollyBlindsNGossip+CricketShitpost+biggboss")
 
     for submission in subreddit.hot(limit=post_limit):
 

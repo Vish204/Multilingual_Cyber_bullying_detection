@@ -18,7 +18,7 @@ COMMENTS_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
 # ---------------------------
 # 🔹 Fetch Videos
 # ---------------------------
-def fetch_videos(query="india news", max_results=5):
+def fetch_videos(query="bollywood controversy OR bigg boss fight OR worst umpiring OR overrated", max_results=5):
 
     params = {
         "part": "snippet",
