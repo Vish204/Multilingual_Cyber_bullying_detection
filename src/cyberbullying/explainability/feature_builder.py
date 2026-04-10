@@ -100,5 +100,6 @@ def build_features(text, artifacts):
 
     # final combine
     X = hstack([X_word, X_char, X_numeric])
+    X = X.astype(np.float32)
 
     return X
