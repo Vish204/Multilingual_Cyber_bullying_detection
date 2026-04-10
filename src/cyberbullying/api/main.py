@@ -77,6 +77,17 @@ def predict(request: TextRequest):
         # 🔹 Step 1: Prediction
         result = predict_post(request.text)
 
+        # 🔥 LABEL FIX: Convert "normal" to "non-cyberbullying"
+        if result.get("label") == "normal":
+            result["label"] = "non-cyberbullying"
+
+        # 🔥 LANGUAGE FIX: The English Heuristic
+        # If FastText thinks it's Hinglish, but it contains basic English grammar, force it to English
+        if result.get("language", {}).get("code") == "mix":
+            eng_check = [" is ", " are ", " you ", " this ", " the ", " a ", " to ", " i ", " am "]
+            if any(word in f" {request.text.lower()} " for word in eng_check):
+                result["language"] = {"code": "en", "name": "english"}
+
         #  END TIMER
         model_time_ms = round((time.time() - start_time) * 1000, 2)
         latency_data = {"model_ms": model_time_ms}
@@ -293,24 +304,6 @@ def collect_data():
         return {"error": str(e)}
     
 
-class ExplainRequest(BaseModel):
-    text: str
-
-@app.post("/explain")
-def explain(request: ExplainRequest):
-    """
-    Dedicated endpoint for SHAP explainability. 
-    Only called when a human clicks 'Explain' to save server load.
-    """
-    if not request.text or len(request.text.strip()) == 0:
-        return {"error": "Empty input"}
-
-    try:
-        explanation = explain_text(request.text)
-        return {"explanation": explanation}
-    except Exception as e:
-        return {"error": str(e)}
-
 
 # ------------------------------------------------
 # Export data as CSV
@@ -326,13 +319,40 @@ def generate_flat_csv(data):
     headers = [
         "Dataset_ID", "Platform", "Platform_Post_ID", "Text", 
         "Label", "Severity", "Confidence_Pct", "Sarcasm_Score", 
-        "Alert_Triggered", "Language", "Moderator_Action", "Created_At"
+        "Language", "Primary_Emotion", "Emotion_Confidence_Pct", 
+        "AI_Summary", "Trigger_Words", "Alert_Triggered",
+        "Moderator_Action", "Moderator_Reason", "Created_At"
     ]
     
     writer = csv.DictWriter(output, fieldnames=headers)
     writer.writeheader()
 
     for index, row in enumerate(data, start=1):
+
+        # Extract the language string cleanly
+        lang_data = row.get("language")
+        if isinstance(lang_data, dict):
+            lang_str = lang_data.get("name", "unknown")
+        else:
+            lang_str = str(lang_data)
+
+
+        # Safely extract SHAP Explanation
+        explanation = row.get("explanation") or {}
+        summary = explanation.get("summary", "")
+        triggers = ", ".join([w.get("word", "") for w in explanation.get("trigger_words", [])])
+
+
+        # 🔥 Extract the Top Emotion (Primary Emotion)
+        emotions_list = row.get("emotions", [])
+        primary_emotion = "None"
+        emotion_score = 0
+        if emotions_list and isinstance(emotions_list, list) and len(emotions_list) > 0:
+            top_emo = emotions_list[0]
+            primary_emotion = top_emo.get("label", "none").capitalize()
+            emotion_score = top_emo.get("score", 0)
+
+
         flat_row = {
             "Dataset_ID": f"CB-{index:05d}",
             "Platform": row.get("platform", "unknown"),
@@ -344,9 +364,17 @@ def generate_flat_csv(data):
             "Severity": row.get("severity", ""),
             "Confidence_Pct": row.get("confidence", 0),
             "Sarcasm_Score": row.get("sarcasm", 0),
+            "Language": lang_str.capitalize(), 
+
+            "Primary_Emotion": primary_emotion,
+            "Emotion_Confidence_Pct": emotion_score,
+
+            "AI_Summary": summary,
+            "Trigger_Words": triggers,
+
             "Alert_Triggered": row.get("alert", False),
-            "Language": row.get("language", "unknown"), 
             "Moderator_Action": row.get("moderator_action", "Pending"),
+            "Moderator_Reason": row.get("moderator_reason", ""),
             "Created_At": row.get("timestamp", "")  # get_history renamed this to timestamp
         }
         writer.writerow(flat_row)

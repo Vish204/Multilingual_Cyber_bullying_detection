@@ -174,6 +174,8 @@ def get_history(
             "severity": item.get("prediction", {}).get("severity"),
             "confidence": item.get("prediction", {}).get("confidence"),
             "sarcasm": item.get("signals", {}).get("sarcasm"),
+
+            "emotions": item.get("signals", {}).get("emotions", []),
             
             # Flattened Flags
             "alert": item.get("flags", {}).get("alert"),
