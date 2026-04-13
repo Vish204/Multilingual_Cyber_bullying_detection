@@ -2,7 +2,11 @@ from pymongo import MongoClient
 from datetime import datetime, timezone
 from bson import ObjectId
 from datetime import datetime
+import hashlib
+import pytz
 
+
+IST = pytz.timezone('Asia/Kolkata')
 
 # ------------------------------------------------
 # 🔹 MongoDB Connection
@@ -41,14 +45,18 @@ def save_prediction(text, result, platform="manual", content_type="text", platfo
     if latency_data is None: latency_data = {}
     if platform_time is None: platform_time = datetime.now(timezone.utc)
 
+    # 🔥 Generate the hash
+    text_hash = hashlib.md5(text.strip().lower().encode('utf-8')).hexdigest()
+
     document = {
         "text": text,
+        "text_hash": text_hash,
         "platform": platform,
         "platform_post_id": platform_post_id,
         "content_type": content_type,
         
         # Timestamps
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(IST),
         "platform_time": platform_time,
 
         # Core ML Output
@@ -87,7 +95,14 @@ def save_prediction(text, result, platform="manual", content_type="text", platfo
     }
     
     print("INSERTING:", document)
-    collection.insert_one(document)
+
+    # 🔥 REPLACE collection.insert_one(document) WITH THIS:
+    collection.update_one(
+        {"text_hash": text_hash}, # Check if this exact text exists
+        {"$set": document},       # If yes, just update the stats. If no, insert it.
+        upsert=True
+    )
+    print(f"UPSERTED: {platform.upper()} Post")
 
 
 # ------------------------------------------------
@@ -98,6 +113,7 @@ def save_prediction(text, result, platform="manual", content_type="text", platfo
 def get_history(
     limit=50,
     platform=None,
+    label=None,
     severity=None,
     reviewed=None,
     alert=None,
@@ -116,6 +132,9 @@ def get_history(
 
     if platform:
         query["platform"] = platform
+
+    if label:
+        query["prediction.label"] = label
 
     if severity:
         query["prediction.severity"] = severity
@@ -163,11 +182,21 @@ def get_history(
     formatted_results = []
     
     for item in results:
+
+        # 🔥 Grab the Mongo UTC time and forcefully format it as a beautiful IST string
+        raw_time = item.get("created_at")
+        if raw_time:
+            # Tell Python this raw time is UTC, then convert to IST
+            utc_time = raw_time.replace(tzinfo=timezone.utc) if raw_time.tzinfo is None else raw_time
+            ist_string = utc_time.astimezone(IST).strftime("%d-%m-%Y %I:%M %p") # e.g., 14-04-2026 01:37 AM
+        else:
+            ist_string = "N/A"
+
         flat_item = {
             "id": str(item.pop("_id")),
             "text": item.get("text"),
             "platform": item.get("platform"),
-            "timestamp": item.get("created_at"), # Map created_at back to timestamp for UI
+            "timestamp": ist_string, # Map created_at back to timestamp for UI
             
             # Flattened ML Data
             "label": item.get("prediction", {}).get("label"),
