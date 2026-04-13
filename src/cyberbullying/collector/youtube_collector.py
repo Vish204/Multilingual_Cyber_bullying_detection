@@ -87,16 +87,16 @@ def fetch_youtube_comments():
 # 🔹 Targeted
 # ---------------------------
 LANGUAGE_QUERIES = {
-    "hindi": "हिंदी समाचार",
-    "marathi": "मराठी बातम्या",
-    "tamil": "தமிழ் செய்திகள்",
-    "bengali": "বাংলা খবর",
-    "gujarati": "ગુજરાતી સમાચાર",
-    "kannada": "ಕನ್ನಡ ಸುದ್ದಿ",
-    "telugu": "తెలుగు వార్తలు",
-    "malayalam": "മലയാളം വാർത്തകൾ",
-    "punjabi": "ਪੰਜਾਬੀ ਖ਼ਬਰਾਂ",
-    "urdu": "اردو خبریں"
+    "hindi": "idiot OR stupid OR bakwas OR chutiya OR pagal",
+    "marathi": "idiot OR stupid OR फालतू OR मूर्ख",
+    "tamil": "idiot OR stupid OR முட்டாள் OR மோசமான",
+    "bengali": "idiot OR stupid OR বাজে OR বোকা",
+    "gujarati": "idiot OR stupid OR બકવાસ OR મૂર્ખ",
+    "kannada": "idiot OR stupid OR ಕೆಟ್ಟ OR ದಡ್ಡ",
+    "telugu": "idiot OR stupid OR చెత్త OR మూర్ఖుడు",
+    "malayalam": "idiot OR stupid OR മോശം OR വിഡ്ഢി",
+    "punjabi": "idiot OR stupid OR ਬਕਵਾਸ OR ਮੂਰਖ",
+    "urdu": "idiot OR stupid OR بکواس OR پاگل"
 }
 
 

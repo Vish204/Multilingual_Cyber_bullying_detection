@@ -25,7 +25,7 @@ reddit = praw.Reddit(
 def fetch_reddit_posts(limit=2):
 
     data = []
-    subreddit = reddit.subreddit("india")
+    subreddit = reddit.subreddit("BollyBlindsNGossip+CricketShitpost+biggboss")
 
     for post in subreddit.hot(limit=limit):
 
@@ -77,16 +77,16 @@ def fetch_reddit_comments(post_limit=2, comment_limit=2):
 # 🔹 Targeted (Multilingual)
 # ---------------------------
 LANGUAGE_QUERIES = {
-    "hindi": "हिंदी",
-    "marathi": "मराठी",
-    "tamil": "தமிழ்",
-    "bengali": "বাংলা",
-    "gujarati": "ગુજરાતી",
-    "kannada": "ಕನ್ನಡ",
-    "telugu": "తెలుగు",
-    "malayalam": "മലയാളം",
-    "punjabi": "ਪੰਜਾਬੀ",
-    "urdu": "اردو"
+    "hindi": "idiot OR stupid OR bakwas OR chutiya OR pagal",
+    "marathi": "idiot OR stupid OR फालतू OR मूर्ख",
+    "tamil": "idiot OR stupid OR முட்டாள் OR மோசமான",
+    "bengali": "idiot OR stupid OR বাজে OR বোকা",
+    "gujarati": "idiot OR stupid OR બકવાસ OR મૂર્ખ",
+    "kannada": "idiot OR stupid OR ಕೆಟ್ಟ OR ದಡ್ಡ",
+    "telugu": "idiot OR stupid OR చెత్త OR మూర్ఖుడు",
+    "malayalam": "idiot OR stupid OR മോശം OR വിഡ്ഢി",
+    "punjabi": "idiot OR stupid OR ਬਕਵਾਸ OR ਮੂਰਖ",
+    "urdu": "idiot OR stupid OR بکواس OR پاگل"
 }
 
 

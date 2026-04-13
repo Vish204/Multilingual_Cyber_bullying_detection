@@ -59,7 +59,7 @@ def fetch_tweets(limit=6):
         print("Twitter fallback triggered")
 
         fallback_params = {
-            "query": "news OR life OR people -is:retweet",
+            "query": "(stupid OR hate OR complain OR blocked OR angry) -is:retweet",
             "max_results": 20,
             "tweet.fields": "lang,text"
         }
@@ -92,17 +92,17 @@ def fetch_tweets(limit=6):
 # ---------------------------
 # 🔹 Targeted
 # ---------------------------
-LANGUAGE_KEYWORDS = {
-    "marathi": "मराठी OR महाराष्ट्र",
-    "hindi": "हिंदी OR भारत",
-    "tamil": "தமிழ் OR சென்னை",
-    "bengali": "বাংলা OR কলকাতা",
-    "gujarati": "ગુજરાતી OR અમદાવાદ",
-    "kannada": "ಕನ್ನಡ OR ಬೆಂಗಳೂರು",
-    "telugu": "తెలుగు OR హైదరాబాద్",
-    "malayalam": "മലയാളം OR കേരളം",
-    "punjabi": "ਪੰਜਾਬੀ OR ਪੰਜਾਬ",
-    "urdu": "اردو"
+LANGUAGE_QUERIES = {
+    "hindi": "idiot OR stupid OR bakwas OR chutiya OR pagal",
+    "marathi": "idiot OR stupid OR फालतू OR मूर्ख",
+    "tamil": "idiot OR stupid OR முட்டாள் OR மோசமான",
+    "bengali": "idiot OR stupid OR বাজে OR বোকা",
+    "gujarati": "idiot OR stupid OR બકવાસ OR મૂર્ખ",
+    "kannada": "idiot OR stupid OR ಕೆಟ್ಟ OR ದಡ್ಡ",
+    "telugu": "idiot OR stupid OR చెత్త OR మూర్ఖుడు",
+    "malayalam": "idiot OR stupid OR മോശം OR വിഡ്ഢി",
+    "punjabi": "idiot OR stupid OR ਬਕਵਾਸ OR ਮੂਰਖ",
+    "urdu": "idiot OR stupid OR بکواس OR پاگل"
 }
 
 

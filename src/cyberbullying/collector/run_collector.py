@@ -3,6 +3,7 @@ import time
 import random
 import os
 from dotenv import load_dotenv
+import hashlib
 
 from cyberbullying.collector.reddit_collector import fetch_all_reddit_content
 from cyberbullying.collector.twitter_collector import fetch_all_twitter_content
@@ -16,20 +17,36 @@ load_dotenv()
 
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 # ---------------------------
-# 🔹 GLOBAL DEDUP (changed to use ID)
+# 🔹 GLOBAL DEDUP (changed to use ID changed again to use hash)
 # ---------------------------
-seen_ids = set()
+
+# seen_ids = set()
+# def is_duplicate(item):
+#     # Try to get the real ID, fallback to text if the ID is missing
+#     post_id = item.get("platform_post_id") or item.get("text", "").strip().lower()
+
+#     if post_id in seen_ids:
+#         return True
+
+#     seen_ids.add(post_id)
+#     return False
+
+
+seen_hashes = set()
 
 def is_duplicate(item):
-    # Try to get the real ID, fallback to text if the ID is missing
-    post_id = item.get("platform_post_id") or item.get("text", "").strip().lower()
+    text = item.get("text", "").strip().lower()
+    if not text:
+        return True
+        
+    # 🔥 Generate a unique mathematical fingerprint of the text
+    text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
 
-    if post_id in seen_ids:
+    if text_hash in seen_hashes:
         return True
 
-    seen_ids.add(post_id)
+    seen_hashes.add(text_hash)
     return False
-
 
 # ---------------------------
 # 🔹 FETCH ALL
