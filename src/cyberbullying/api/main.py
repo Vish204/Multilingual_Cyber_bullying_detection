@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time
 
+import re
 
 
 from cyberbullying.inference.inference_service import predict_post
@@ -74,8 +75,28 @@ def predict(request: TextRequest):
         # START TIMER
         start_time = time.time()
 
+        # 🔥 1. REGEX PREPROCESSING: Strip @mentions and URLs instantly
+        clean_text = re.sub(r'http\S+|www\.\S+|@\w+', '', request.text).strip()
+
+        # 🔥 2. SHORT TEXT FILTER: Kill noise like "BJP" or "By" (Improves accuracy!)
+        if len(clean_text.split()) <= 2:
+             model_time_ms = round((time.time() - start_time) * 1000, 2)
+             # Return a safe dummy response to skip the heavy ML math entirely
+             return {
+                 "label": "non-cyberbullying",
+                 "severity": "none",
+                 "confidence": 0,
+                 "sarcasm": 0,
+                 "language": {"code": "en", "name": "english"},
+                 "latency": {"model_ms": model_time_ms, "shap_ms": 0, "total_ms": model_time_ms},
+                 "explanation": {
+                     "summary": "Text too short for targeted cyberbullying analysis.",
+                     "trigger_words": []
+                 }
+             }
+
         # 🔹 Step 1: Prediction
-        result = predict_post(request.text)
+        result = predict_post(clean_text)
 
         # 🔥 LABEL FIX: Convert "normal" to "non-cyberbullying"
         if result.get("label") == "normal":
@@ -85,7 +106,7 @@ def predict(request: TextRequest):
         # If FastText thinks it's Hinglish, but it contains basic English grammar, force it to English
         if result.get("language", {}).get("code") == "mix":
             eng_check = [" is ", " are ", " you ", " this ", " the ", " a ", " to ", " i ", " am "]
-            if any(word in f" {request.text.lower()} " for word in eng_check):
+            if any(word in f" {clean_text.lower()} " for word in eng_check):
                 result["language"] = {"code": "en", "name": "english"}
 
         #  END TIMER
@@ -158,6 +179,7 @@ def predict(request: TextRequest):
 def history(
     limit: int = 50,
     platform: str = None,
+    label: str = None,
     severity: str = None,
     reviewed: bool = None,
     alert: bool = None,
@@ -175,6 +197,7 @@ def history(
         data = get_history(
             limit=limit,
             platform=platform,
+            label=label,
             severity=severity,
             reviewed=reviewed,
             alert=alert,
@@ -372,25 +395,29 @@ def generate_flat_csv(data):
             "AI_Summary": summary,
             "Trigger_Words": triggers,
 
-            "Alert_Triggered": row.get("alert", False),
+            "Alert_Triggered": "Yes" if row.get("alert") else "No",
             "Moderator_Action": row.get("moderator_action", "Pending"),
             "Moderator_Reason": row.get("moderator_reason", ""),
             "Created_At": row.get("timestamp", "")  # get_history renamed this to timestamp
         }
         writer.writerow(flat_row)
 
-    output.seek(0)
+    raw_csv_string = output.getvalue()
+    
+    # Encode it as utf-8-sig to force Excel to read Hindi/Tamil/Bengali correctly
+    csv_bytes = raw_csv_string.encode('utf-8-sig')
+    
     return StreamingResponse(
-        output,
+        io.BytesIO(csv_bytes),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=cyberbullying_export.csv"}
     )
 
 @app.get("/export/view")
-def export_current_view(limit: int = 1000, platform: str = None, severity: str = None, alert: bool = None):
+def export_current_view(limit: int = 1000, platform: str = None,label: str = None, severity: str = None, alert: bool = None):
     """Exports only the filtered data the moderator is currently looking at."""
     try:
-        data = get_history(limit=limit, platform=platform, severity=severity, alert=alert)
+        data = get_history(limit=limit, platform=platform, label=label, severity=severity, alert=alert)
         return generate_flat_csv(data)
     except Exception as e:
         return {"error": str(e)}
