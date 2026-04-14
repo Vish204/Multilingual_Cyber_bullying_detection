@@ -70,11 +70,11 @@ def fetch_all_platforms():
         
         target_langs = ["hindi", "marathi", "tamil", "bengali", "gujarati"]
         for lang in target_langs:
-            data.extend(fetch_targeted_reddit(lang, limit=2))
+            data.extend(fetch_targeted_reddit(lang, limit=3))
             data.extend(fetch_targeted_youtube(lang))
             if os.getenv("ENABLE_TWITTER") == "true":
                 try:
-                    data.extend(fetch_targeted_tweets(lang, limit=2))
+                    data.extend(fetch_targeted_tweets(lang, limit=3))
                 except:
                     pass
     else:
@@ -85,7 +85,7 @@ def fetch_all_platforms():
         data.extend(fetch_all_reddit_content())
         if os.getenv("ENABLE_TWITTER") == "true":
             try:
-                data.extend(fetch_all_twitter_content())
+                data.extend(fetch_all_twitter_content(lang, limit=2))
             except Exception as e:
                 print("Twitter skipped:", e)
         data.extend(fetch_all_youtube_content())

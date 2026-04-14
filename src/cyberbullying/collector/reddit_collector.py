@@ -22,7 +22,7 @@ reddit = praw.Reddit(
 # ---------------------------
 # 🔹 Natural Posts
 # ---------------------------
-def fetch_reddit_posts(limit=2):
+def fetch_reddit_posts(limit=5):
 
     data = []
     subreddit = reddit.subreddit("BollyBlindsNGossip+CricketShitpost+biggboss")
@@ -47,7 +47,7 @@ def fetch_reddit_posts(limit=2):
 # ---------------------------
 # 🔹 Natural Comments
 # ---------------------------
-def fetch_reddit_comments(post_limit=2, comment_limit=2):
+def fetch_reddit_comments(post_limit=3, comment_limit=3):
 
     data = []
     # subreddit = reddit.subreddit("india")

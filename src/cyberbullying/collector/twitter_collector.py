@@ -108,13 +108,13 @@ LANGUAGE_QUERIES = {
 
 def fetch_targeted_tweets(language, limit=3):
 
-    query = LANGUAGE_KEYWORDS.get(language)
+    query = LANGUAGE_QUERIES.get(language)
     if not query:
         return []
 
     params = {
         "query": f"{query} -is:retweet",
-        "max_results": limit,
+        "max_results": 10,
         "tweet.fields": "lang,text,created_at,id"
     }
 
@@ -123,7 +123,7 @@ def fetch_targeted_tweets(language, limit=3):
 
     tweets = []
 
-    for tweet in data.get("data", []):
+    for tweet in data.get("data", [])[:limit]:
         text = clean_text(tweet.get("text", ""))
 
         if text:
