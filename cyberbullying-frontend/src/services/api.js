@@ -8,7 +8,7 @@ export async function fetchPosts() {
 }
 
 // 🔹 Moderate post
-export async function moderatePost(id, action, reason = "") {
+export async function moderatePost(id, action, reason = "", saved = false) {
   const res = await fetch(`${BASE_URL}/moderate`, {
     method: "POST",
     headers: {
@@ -17,11 +17,10 @@ export async function moderatePost(id, action, reason = "") {
     body: JSON.stringify({
       id,
       action,
-      reason, // 🔥 ADD
+      reason, 
+      saved // 🔥 NEW: Tell backend if we are saving it for retraining
     }),
-  });
-
-  return res.json();
+  }); return res.json();
 }
 
 export async function fetchSeverityStats() {
@@ -40,23 +39,16 @@ export async function exportPosts(filters = {}) {
 
   Object.keys(filters).forEach((key) => {
     const value = filters[key];
-
-    //  skip null, undefined, empty, "all"
-    if (
-      value === null ||
-      value === undefined ||
-      value === "" ||
-      value === "all"
-    ) {
+    if (value === null || value === undefined || value === "" || value === "all") {
       return;
     }
-
     cleanedFilters[key] = value;
   });
 
   const query = new URLSearchParams(cleanedFilters).toString();
 
-  const res = await fetch(`${BASE_URL}/export?${query}`);
+  // 🔥 FIX: Point to the new /export/view endpoint
+  const res = await fetch(`${BASE_URL}/export/view?${query}`);
 
   const blob = await res.blob();
   return blob;

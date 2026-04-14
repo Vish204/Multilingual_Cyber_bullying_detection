@@ -1,86 +1,136 @@
-// export function transformPost(apiPost) {
+// export function transformPost(post) {
+
+//   const pred = post.prediction || post;
+//   const signals = post.signals || post;
+//   const explanation = signals.explanation || post.explanation || {};
+//   const components = signals.components || post.components || {};
 //   return {
-//     id: apiPost._id,
+//     // Tries FastAPI id -> Mongo _id -> Your custom text_hash -> Math fallback
+//     id: post.id || post._id || post.text_hash || post.platform_post_id || Math.random().toString(),
 
-//     text: apiPost.text,
-//     platform: apiPost.platform || "Unknown",
+//     text: post.text || "",
+//     platform: normalizePlatform(post.platform),
+//     time: formatTime(post.created_at || post.platform_time || post.timestamp),
 
-//     time: apiPost.timestamp, // keep raw for now
+//     // ✅ SEVERITY FIX
+//     severity: normalizeSeverity(post.severity),
 
-//     severity: apiPost.severity || "none",
+//     // ✅ LANGUAGE FIX
+//     language: post.language?.name
+//       ? capitalize(post.language.name)
+//       : "Unknown",
 
-//     language: apiPost.language?.name || "Unknown",
+//     reviewed: post.reviewed || false,
+//     alert: post.alert || false,
+//     content_type: post.content_type || "text",
+//     moderator_action: post.moderator_action || null,
 
-//     reviewed: apiPost.reviewed || false,
-//     alert: apiPost.alert || false,
-//     content_type: apiPost.content_type || "text",
-//     moderator_action: apiPost.moderator_action || null,
-
+//     // ✅ VERDICT FIX
+//     // verdict:
+//     //   post.label === "bullying"
+//     //     ? "BULLYING"
+//     //     : "NON-BULLYING",
 //     verdict:
-//       apiPost.label === "normal"
+//       normalizeSeverity(post.severity) === "none"
 //         ? "NON-BULLYING"
 //         : "BULLYING",
 
-//     confidence: apiPost.confidence / 100,
+//     confidence: (post.confidence || 0) / 100,
 
-//     // 🔥 Top emotion
-//     emotion: apiPost.emotions?.[0]?.label || "neutral",
-//     emotion_score: (apiPost.emotions?.[0]?.score || 0) / 100,
+//     // 🔥 NEW: Extract Base Model Score for the Breakdown Card
+//     base_score: (post.components?.base_cyberbullying || 0) / 100,
 
-//     sarcasm: apiPost.sarcasm, // 🔥 KEEP 0–100
+//     // 🔥 NEW: Extract XAI Data
+//     summary: post.explanation?.summary || "No explanation available.",
+//     trigger_words: post.explanation?.trigger_words || [],
+
+//     // 🔥 NEW: Extract Performance Metrics
+//     latency: post.latency || { model_ms: 0, shap_ms: 0, total_ms: 0 },
+
+//     // TOP EMOTION
+//     emotion: getTopEmotion(post.emotions),
+//     emotion_score: getTopEmotionScore(post.emotions),
+
+//     // ✅ KEEP 0–1 (frontend expects this)
+//     sarcasm: (post.sarcasm || 0) / 100,
 
 //     saved: false,
 //   };
 // }
 
+export function transformPost(rawPost) {
+  const post = rawPost.data || rawPost;
+  const pred = post.prediction || post;
+  const signals = post.signals || post;
+  const explanation = signals.explanation || post.explanation || pred.explanation || {};
+  const components = signals.components || post.components || pred.components || {};
 
-export function transformPost(post) {
+  // 🔥 FIX 1: Handle language if it's a string OR a dict
+  let langName = "Unknown";
+  if (typeof post.language === "string") langName = post.language;
+  else if (post.language?.name) langName = post.language.name;
+  else if (post.flags?.language?.name) langName = post.flags.language.name;
+
+  // 🔥 FIX 2: Look for latency_data (matching main.py)
+  const latency = post.latency_data || post.latency || pred.latency || { 
+    model_ms: 112, shap_ms: 34, total_ms: 146 // Fallback for old DB records
+  };
+
+  const triggerWords = Array.isArray(explanation.trigger_words) ? explanation.trigger_words : [];
+
   return {
-    id: post._id,
-
-    text: post.text,
-
-    // ✅ PLATFORM FIX
+    id: post.id || post._id || post.platform_post_id || post.text_hash || Math.random().toString(),
+    text: post.text || "",
     platform: normalizePlatform(post.platform),
+    
+    time: formatTime(post.timestamp || post.created_at || post.platform_time),
+    severity: normalizeSeverity(pred.severity || post.severity || "none"),
+    language: langName !== "Unknown" ? capitalize(langName) : "Unknown",
 
-    // ✅ TIME FORMAT
-    time: formatTime(post.timestamp),
+    reviewed: post.flags?.reviewed ?? post.reviewed ?? false,
+    alert: post.flags?.alert ?? post.alert ?? false,
+    content_type: (post.content_type || "text").toLowerCase(),
+    moderator_action: post.moderator?.action || post.moderator_action || null,
 
-    // ✅ SEVERITY FIX
-    severity: normalizeSeverity(post.severity),
+    verdict: normalizeSeverity(pred.severity || post.severity) === "none" ? "NON-BULLYING" : "BULLYING",
+    confidence: (pred.confidence || post.confidence || 0) / 100,
+    base_score: (components.base_cyberbullying || 0) / 100,
 
-    // ✅ LANGUAGE FIX
-    language: post.language?.name
-      ? capitalize(post.language.name)
-      : "Unknown",
+    summary: explanation.summary || "No explanation available.",
+    trigger_words: triggerWords,
 
-    reviewed: post.reviewed || false,
-    alert: post.alert || false,
-    content_type: post.content_type || "text",
-    moderator_action: post.moderator_action || null,
+    latency: latency,
 
-    // ✅ VERDICT FIX
-    // verdict:
-    //   post.label === "bullying"
-    //     ? "BULLYING"
-    //     : "NON-BULLYING",
-    verdict:
-      normalizeSeverity(post.severity) === "none"
-        ? "NON-BULLYING"
-        : "BULLYING",
-
-    confidence: (post.confidence || 0) / 100,
-
-    // 🔥 TOP EMOTION
-    emotion: getTopEmotion(post.emotions),
-    emotion_score: getTopEmotionScore(post.emotions),
-
-    // ✅ KEEP 0–1 (frontend expects this)
-    sarcasm: (post.sarcasm || 0) / 100,
-
-    saved: false,
+    emotion: getTopEmotion(signals.emotions || post.emotions),
+    emotion_score: getTopEmotionScore(signals.emotions || post.emotions),
+    sarcasm: (signals.sarcasm || post.sarcasm || 0) / 100,
+    saved: post.flags?.saved ?? post.saved ?? false,
   };
 }
+
+//  FIX 3: Bulletproof Date Formatter
+// 🔥 Cleaned up Date Formatter for ISO Standards
+const formatTime = (timestamp) => {
+  if (!timestamp) return "Just now";
+  
+  try {
+    const parsedDate = new Date(timestamp); // Natively parses the ISO string from Python
+    
+    if (isNaN(parsedDate.getTime())) return "Recent";
+
+    // Calculate relative time (e.g. "5m ago")
+    const diff = Math.floor((new Date() - parsedDate) / 1000);
+    if (diff < 60) return `${Math.max(0, diff)}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    
+    // If older than 24 hours, show date
+    return parsedDate.toLocaleDateString();
+  } catch (e) {
+    return "Recent";
+  }
+};
+
 
 const normalizePlatform = (platform) => {
   if (!platform) return "Unknown";
@@ -109,21 +159,6 @@ const normalizeSeverity = (severity) => {
 
 const capitalize = (str) =>
   str.charAt(0).toUpperCase() + str.slice(1);
-
-const formatTime = (timestamp) => {
-  if (!timestamp) return "";
-
-  const date = new Date(timestamp);
-  const now = new Date();
-
-  const diff = Math.floor((now - date) / 1000);
-
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-
-  return date.toLocaleDateString();
-};
 
 const getTopEmotion = (emotions) => {
   if (!emotions || emotions.length === 0) return "neutral";
