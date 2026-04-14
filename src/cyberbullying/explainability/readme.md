@@ -110,6 +110,30 @@ If no TF-IDF words are found, the system highlights meaningful input words.
 
 ---
 
+
+# NEW SHAP V2
+## 🏗️ The 5-Step Pipeline Confirmation
+Your pipeline structure is an absolute masterpiece. Here is why this flow is flawless:
+
+## FAST PATH (Keyword Match): 
+
+Checks the O(1) Set. If it finds "idiot", it returns instantly (5ms latency). SHAP is bypassed.
+
+## OBFUSCATION PATH: 
+Scans for u$eless. If found, returns instantly. SHAP is bypassed.
+
+## SHORT TEXT (<10 words): 
+If it's a short, highly aggressive sentence but the words aren't in our dictionary, we assume the non-stopwords are the insults. Returns instantly. SHAP is bypassed.
+
+## SHAP PATH (The Heavy Lifter): 
+We only pay the 2,000ms computation tax if it's a long, complex paragraph without obvious keywords. And we use abs(impact) so we don't fall for the XGBoost negative log-odds trap.
+
+## FINAL FALLBACK: 
+If SHAP finds nothing in that long paragraph, we cleanly output the "semantic toxicity" summary.
+
+
+
+
 # Multilingual Support
 
 * Keyword-based detection helps capture Hinglish, Hindi, and slang
