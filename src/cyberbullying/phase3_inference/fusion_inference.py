@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import pandas as pd
+import time
 #from predict_components import run_component_predictions #works only in src/cyberbullying/phase3_inference
 from cyberbullying.phase3_inference.predict_components import run_component_predictions #works for phase4 testing
 
@@ -17,26 +18,40 @@ PHRASES = []
 KEYWORD_LANG_MAP = {}
 
 def load_keywords():
-    for file in os.listdir(KEYWORDS_DIR):
-        if file.endswith(".json"):
-            # Extract language name (e.g., "hindi.json" -> "Hindi")
-            lang_name = file.replace(".json", "").capitalize()
 
-            with open(KEYWORDS_DIR / file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+    print(" Loading multilingual keywords for fusion...")
+    start_time = time.time()
 
-                if "keywords" in data:
-                    for k in data["keywords"]:
-                        k = str(k).strip().lower()
-                        if len(k) <= 2:
-                            continue
-                        if " " in k:
-                            PHRASES.append(k)   # no regex
-                        else:
-                            SINGLE_WORDS.add(k)
-                        
-                        #  NEW: Populate the language map
-                        KEYWORD_LANG_MAP[k] = lang_name
+    if KEYWORDS_DIR.exists():
+        for file in os.listdir(KEYWORDS_DIR):
+            if file.endswith(".json"):
+                lang_name = file.replace(".json", "").capitalize()
+
+                try:
+                    with open(KEYWORDS_DIR / file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+
+                        if "keywords" in data:
+                            for k in data["keywords"]:
+                                k = str(k).strip().lower()
+                                if len(k) <= 2:
+                                    continue
+                                if " " in k:
+                                    PHRASES.append(k)   # no regex
+                                else:
+                                    SINGLE_WORDS.add(k)
+                                
+                                KEYWORD_LANG_MAP[k] = lang_name
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not load {file}: {e}")
+    else:
+        print(f"⚠️ CRITICAL: Keywords directory not found at {KEYWORDS_DIR}")
+
+    end_time = time.time()
+    elapsed_ms = (end_time - start_time) * 1000
+    total_loaded = len(SINGLE_WORDS) + len(PHRASES)
+    
+    print(f"✅ Fusion Keywords Loaded: {total_loaded} total ({len(SINGLE_WORDS)} words, {len(PHRASES)} phrases) in {elapsed_ms:.2f} ms")
 
 #  load once
 load_keywords()
