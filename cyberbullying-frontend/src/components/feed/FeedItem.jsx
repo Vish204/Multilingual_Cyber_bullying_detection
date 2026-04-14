@@ -29,6 +29,10 @@ export default function FeedItem({ post, isSelected, onClick }) {
         <div className="platform-info">
           {getPlatformIcon()}
           <span>{post.platform}</span>
+          
+          <span style={{ fontSize: "10px", color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: "4px", marginLeft: "4px", textTransform: "capitalize" }}>
+            {post.content_type}
+          </span>
 
           {post.reviewed && (
             <span className="reviewed-badge">✔</span>

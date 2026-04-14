@@ -1,12 +1,11 @@
-export default function ContextSummary() {
+export default function ContextSummary({ summary }) {
   return (
     <div className="xai-summary">
 
       <p className="xai-subtitle">Reasoning</p>
 
       <p className="xai-text">
-        The system detected direct insulting language and aggressive tone,
-        which are strong indicators of bullying behavior.
+        { summary }
       </p>
 
     </div>
