@@ -186,17 +186,18 @@ def get_history(
         # 🔥 Grab the Mongo UTC time and forcefully format it as a beautiful IST string
         raw_time = item.get("created_at")
         if raw_time:
-            # Tell Python this raw time is UTC, then convert to IST
             utc_time = raw_time.replace(tzinfo=timezone.utc) if raw_time.tzinfo is None else raw_time
-            ist_string = utc_time.astimezone(IST).strftime("%d-%m-%Y %I:%M %p") # e.g., 14-04-2026 01:37 AM
+            ist_string = utc_time.astimezone(IST).isoformat()  # Looks like: '2026-04-15T00:25:48+05:30'
         else:
-            ist_string = "N/A"
+            ist_string = None
 
         flat_item = {
             "id": str(item.pop("_id")),
             "text": item.get("text"),
             "platform": item.get("platform"),
             "timestamp": ist_string, # Map created_at back to timestamp for UI
+
+            "content_type": item.get("content_type", "text"),
             
             # Flattened ML Data
             "label": item.get("prediction", {}).get("label"),
@@ -216,7 +217,9 @@ def get_history(
             "explanation": item.get("signals", {}).get("explanation"),
             
             # Flattened Moderator Actions
-            "moderator_action": item.get("moderator", {}).get("action")
+            "moderator_action": item.get("moderator", {}).get("action"),
+
+            "latency": item.get("latency", {})
         }
         formatted_results.append(flat_item)
 
