@@ -87,7 +87,7 @@ export default function ModerationLayout() {
   const [alert, setAlert] = useState(null);
   const [alertedIds, setAlertedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
-
+  const [loadingText, setLoadingText] = useState("Start Stream");
 
 
 
@@ -183,15 +183,15 @@ export default function ModerationLayout() {
 
   const handleExport = async () => {
     try {
-      const blob = await exportPosts(filters); 
+      // Calls the python backend directly for a perfectly formatted CSV!
+      const exportFilters = { ...filters, limit: 15 };
 
+      const blob = await exportPosts(exportFilters); 
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
-      a.download = "moderation_data.csv";
+      a.download = "cyberbullying_export.csv";
       a.click();
-
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
@@ -200,154 +200,184 @@ export default function ModerationLayout() {
 
 
   // ✅ Moderation
-const handleModeration = async (action, postId, reason = "") => {
+// const handleModeration = async (action, postId, reason = "") => {
   
-  console.log("Moderating:", action, postId);
+//   console.log("Moderating:", action, postId);
 
-  try {
-    if (action !== "save") {
-    await moderatePost(postId, action, reason);
-    }
-  } catch (err) {
-    console.error("Backend error:", err);
-  }
-
-//   if (action === "export") {
-//   const reviewedPosts = feed.filter(p => p.reviewed);
-
-//   if (reviewedPosts.length === 0) {
-//     alert("No reviewed posts to export");
-//     return;
+//   try {
+//     if (action !== "save") {
+//     await moderatePost(postId, action, reason);
+//     }
+//   } catch (err) {
+//     console.error("Backend error:", err);
 //   }
 
-//   const dataStr = JSON.stringify(reviewedPosts, null, 2);
-//   const blob = new Blob([dataStr], { type: "application/json" });
+//     if (action === "export") {
+//       const reviewedPosts = feed.filter(p => p.reviewed);
 
-//   const url = URL.createObjectURL(blob);
-//   const a = document.createElement("a");
-//   a.href = url;
-//   a.download = "reviewed_posts.json";
-//   a.click();
+//       if (reviewedPosts.length === 0) {
+//         alert("No reviewed posts to export");
+//         return;
+//       }
 
-//   URL.revokeObjectURL(url);
+//       // 🔹 Define CSV headers
+//       const headers = [
+//         "id",
+//         "text",
+//         "platform",
+//         "severity",
+//         "language",
+//         "verdict",
+//         "confidence",
+//         "emotion",
+//         "sarcasm",
+//         "reviewed",
+//         "saved",
+//         "moderator_action"
+//       ];
+
+//       // 🔹 Convert to CSV rows
+//       const rows = reviewedPosts.map(post =>
+//         headers.map(field => `"${post[field] ?? ""}"`).join(",")
+//       );
+
+//       // 🔹 Combine header + rows
+//       const csvContent = [
+//         headers.join(","), 
+//         ...rows
+//       ].join("\n");
+
+//       // 🔹 Create file + download
+//       const blob = new Blob([csvContent], { type: "text/csv" });
+//       const url = URL.createObjectURL(blob);
+
+//       const a = document.createElement("a");
+//       a.href = url;
+//       a.download = "reviewed_posts.csv";
+//       a.click();
+
+//       URL.revokeObjectURL(url);
+//     }
+
+//     if (action === "delete") {
+//       // 🔥 ONLY delete removes from feed
+
+//       // const updatedFeed = feed.filter((item) => item.id !== postId);
+//       const updatedFeed = feed.filter(post => post.id !== postId);
+//       setFeed(updatedFeed);
+//   if (selectedPost?.id === postId) {
+//     setSelectedPost(null);
+//   }
+
 //   return;
-// }
 
-    if (action === "export") {
-      const reviewedPosts = feed.filter(p => p.reviewed);
+//     } 
+//     // else if (action === "save" && item.moderator_action === "delete") {
+//     //     return item;
+//     // } 
+//     else if (action === "ignore" || action === "report" || action === "save") {
+//       // 🔥 update post instead of removing
+//       const updatedFeed = feed.map((item) => {
+//         if (item.id === postId) {
 
-      if (reviewedPosts.length === 0) {
-        alert("No reviewed posts to export");
-        return;
-      }
+//           // 🟢 SAVE → independent toggle
+//           if (action === "save") {
+//             return {
+//               ...item,
+//               saved: !item.saved, // toggle save
+//             };
+//           }
 
-      // 🔹 Define CSV headers
-      const headers = [
-        "id",
-        "text",
-        "platform",
-        "severity",
-        "language",
-        "verdict",
-        "confidence",
-        "emotion",
-        "sarcasm",
-        "reviewed",
-        "saved",
-        "moderator_action"
-      ];
+//           // 🔴 DELETE handled separately (already done)
 
-      // 🔹 Convert to CSV rows
-      const rows = reviewedPosts.map(post =>
-        headers.map(field => `"${post[field] ?? ""}"`).join(",")
-      );
+//           // 🔴 IGNORE / REPORT → real moderation
+//           return {
+//             ...item,
+//             reviewed: true,
+//             moderator_action: action,
+//             reason: reason || "",
+//           };
+//         }
 
-      // 🔹 Combine header + rows
-      const csvContent = [
-        headers.join(","), 
-        ...rows
-      ].join("\n");
+//         return item;
+//       });
 
-      // 🔹 Create file + download
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
+//       setFeed(updatedFeed);
+//       // await loadFeed();
+//       let message = "";
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "reviewed_posts.csv";
-      a.click();
+//       if (action === "ignore") message = "Post ignored";
+//       if (action === "report") message = "Post reported";
+//       if (action === "save") message = "Post saved";
 
-      URL.revokeObjectURL(url);
+//       setActionMessage(message);
+
+//       setTimeout(() => setActionMessage(null), 2000);
+
+//       // keep same post selected (important UX)
+//       const updatedPost = updatedFeed.find(p => p.id === postId);
+//       setSelectedPost(updatedPost);
+//     }
+// };
+
+
+const handleModeration = async (action, postId, reason = "") => {
+    console.log("Moderating:", action, postId);
+
+    // 1. Find current post state
+    const postToUpdate = feed.find((p) => p.id === postId);
+    if (!postToUpdate) return;
+
+    // 2. Determine new state
+    let newAction = postToUpdate.moderator_action;
+    let newSaved = postToUpdate.saved;
+
+    if (action === "save") {
+      newSaved = !postToUpdate.saved; // Toggle save state
+    } else {
+      newAction = action; // Ignore, Delete, or Report
     }
 
+    // 3. Send to MongoDB (Wait for it to finish)
+    try {
+      await moderatePost(postId, newAction || "pending", reason, newSaved);
+    } catch (err) {
+      console.error("Backend DB error:", err);
+    }
+
+    // 4. Update UI: If delete, remove it from the screen entirely
     if (action === "delete") {
-      // 🔥 ONLY delete removes from feed
-
-      // const updatedFeed = feed.filter((item) => item.id !== postId);
-      const updatedFeed = feed.filter(post => post.id !== postId);
-      setFeed(updatedFeed);
-      //so that it doesnt jump to next post after deleting
-      // if (updatedFeed.length > 0) {
-      //   setSelectedPost(updatedFeed[0]);
-      // } else {
-      //   setSelectedPost(null);
-      // }
-      // setSelectedPost(null);
-       // also clear selected post
-  if (selectedPost?.id === postId) {
-    setSelectedPost(null);
-  }
-
-  return;
-
-    } 
-    // else if (action === "save" && item.moderator_action === "delete") {
-    //     return item;
-    // } 
-    else if (action === "ignore" || action === "report" || action === "save") {
-      // 🔥 update post instead of removing
-      const updatedFeed = feed.map((item) => {
-        if (item.id === postId) {
-
-          // 🟢 SAVE → independent toggle
-          if (action === "save") {
-            return {
-              ...item,
-              saved: !item.saved, // toggle save
-            };
-          }
-
-          // 🔴 DELETE handled separately (already done)
-
-          // 🔴 IGNORE / REPORT → real moderation
-          return {
-            ...item,
-            reviewed: true,
-            moderator_action: action,
-            reason: reason || "",
-          };
-        }
-
-        return item;
-      });
-
-      setFeed(updatedFeed);
-      // await loadFeed();
-      let message = "";
-
-      if (action === "ignore") message = "Post ignored";
-      if (action === "report") message = "Post reported";
-      if (action === "save") message = "Post saved";
-
-      setActionMessage(message);
-
-      setTimeout(() => setActionMessage(null), 2000);
-
-      // keep same post selected (important UX)
-      const updatedPost = updatedFeed.find(p => p.id === postId);
-      setSelectedPost(updatedPost);
+      setFeed(feed.filter((p) => p.id !== postId));
+      if (selectedPost?.id === postId) setSelectedPost(null);
+      return;
     }
-};
+
+    // 5. Update UI: For ignore/report/save, update the post in place
+    const updatedFeed = feed.map((item) => {
+      if (item.id === postId) {
+        return {
+          ...item,
+          reviewed: true,
+          moderator_action: newAction,
+          reason: reason || item.reason,
+          saved: newSaved,
+        };
+      }
+      return item;
+    });
+
+    setFeed(updatedFeed);
+    setSelectedPost(updatedFeed.find((p) => p.id === postId));
+
+    // Show Toast Message
+    let message = "";
+    if (action === "ignore") message = "Post Ignored";
+    if (action === "report") message = "Post Reported";
+    if (action === "save") message = newSaved ? "Saved to Curated Dataset 🧠" : "Removed from Dataset";
+
+    setActionMessage(message);
+    setTimeout(() => setActionMessage(null), 2000);
+  };
 
     const triggerAlert = (post) => {
       if (post.severity === "severe") {
@@ -390,72 +420,93 @@ const handleModeration = async (action, postId, reason = "") => {
       }
 
     }, [feed, alert]);
-
-    // useEffect(() => {
-    //   if (!isLive) return;
-
-    //   async function runStream() {
-    //     try {
-    //       setIsLoading(true);
-    //       console.log("🚀 Collecting 15 posts...");
-
-    //       // 🔥 STEP 1: Collect (adds max 15 to DB)
-    //       await collectData();
-
-    //       // 🔥 STEP 2: Fetch latest 15
-    //       const data = await fetchPosts();
-    //       const transformed = (data.data || data).map(transformPost);
-
-    //       setFeed(transformed);
-    //       console.log("RAW DATA:", data);
-    //       console.log("TRANSFORMED:", transformed);
-
-    //     } catch (err) {
-    //       console.error("Stream error:", err);
-    //     } finally {
-    //       // 🔥 AUTO STOP
-    //       setIsLive(false);
-    //       setIsLoading(false);
-    //       console.log("⏹ Stream stopped automatically");
-    //     }
-    //   }
-
-    //   runStream();
-    // }, [isLive]);
     
+      // useEffect(() => {
+      //   if (!isLive) return;
+
+      //   async function runStream() {
+      //     try {
+      //       setIsLoading(true);
+
+      //       console.log("🚀 Collecting 15 posts...");
+
+      //       await collectData();
+
+      //       const data = await fetchPosts();
+      //       console.log("RAW DATA:", data);
+
+      //       const transformed = data.map(transformPost);
+      //       console.log("TRANSFORMED:", transformed);
+
+      //       setFeed(transformed);
+      //       setSelectedPost(null);
+
+      //     } catch (err) {
+      //       console.error("Stream error:", err);
+      //     } finally {
+      //       // 🔥 FIX HERE
+      //       setTimeout(() => {
+      //         setIsLive(false);
+      //         setIsLoading(false);
+      //         console.log("⏹ Stream stopped automatically");
+      //       }, 100);
+      //     }
+      //   }
+
+      //   runStream();
+      // }, [isLive]);
+
+
       useEffect(() => {
-        if (!isLive) return;
+        if (!isLive) {
+          setLoadingText("Start Stream");
+          return;
+        }
+
+        let isMounted = true;
 
         async function runStream() {
           try {
             setIsLoading(true);
-
             console.log("🚀 Collecting 15 posts...");
 
-            await collectData();
+            // 🔥 NEW: Dynamic Loading Sequence!
+            setLoadingText("📡 Connecting to Social APIs...");
+            const timer1 = setTimeout(() => { if (isMounted) setLoadingText("⚙️ Running XLM-R Pipeline..."); }, 3000);
+            const timer2 = setTimeout(() => { if (isMounted) setLoadingText("⚡ Processing Multilingual Content..."); }, 7000);
 
+            // Run collector & fetch
+            await collectData();
             const data = await fetchPosts();
             console.log("RAW DATA:", data);
 
             const transformed = data.map(transformPost);
-            console.log("TRANSFORMED:", transformed);
 
-            setFeed(transformed);
-            setSelectedPost(null);
+            if (isMounted) {
+              setFeed(transformed);
+              setSelectedPost(null);
+            }
+
+            // Cleanup timers
+            clearTimeout(timer1);
+            clearTimeout(timer2);
 
           } catch (err) {
             console.error("Stream error:", err);
           } finally {
-            // 🔥 FIX HERE
-            setTimeout(() => {
+            if (isMounted) {
               setIsLive(false);
               setIsLoading(false);
               console.log("⏹ Stream stopped automatically");
-            }, 100);
+              setLoadingText("Start Stream");
+              
+            }
           }
         }
 
         runStream();
+        
+        return () => { isMounted = false; };
       }, [isLive]);
 
   return (
@@ -518,7 +569,8 @@ const handleModeration = async (action, postId, reason = "") => {
         onClick={handleStreamToggle}
         disabled={isLoading}
         >
-          {isLoading ? "Loading..." : "Start Stream"}
+          {/* {isLoading ? "Loading..." : "Start Stream"} */}
+          {loadingText}
         </button>
         <div className="feed-header">
           <h3>Feed</h3>
@@ -554,24 +606,31 @@ const handleModeration = async (action, postId, reason = "") => {
             }}
           />
           )} */}
-          {feed.length === 0 ? (
-  <div className="empty-state">
-    Click "Start Stream" to begin monitoring
-  </div>
-) : (
-  <FeedList
-    key={filteredFeed.length}
-    feed={filteredFeed}
-    selectedPost={selectedPost}
-    onSelectPost={(post) => {
-      if (selectedPost?.id === post.id) {
-        setSelectedPost(null);
-      } else {
-        setSelectedPost(post);
-      }
-    }}
-  />
-)}
+          {/* 🔥 FIX 3: Dynamic Left Panel State */}
+          {isLoading ? (
+            <div className="empty-state" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ fontSize: "24px", animation: "spin 2s linear infinite" }}>⏳</div>
+              <div>{loadingText}</div>
+            </div>
+          ) : feed.length === 0 ? (
+            <div className="empty-state">
+              Click "Start Stream" to begin monitoring
+            </div>
+          ) : (
+            <FeedList
+              key={filteredFeed.length}
+              feed={filteredFeed}
+              selectedPost={selectedPost}
+              onSelectPost={(post) => {
+                if (selectedPost?.id === post.id) {
+                  setSelectedPost(null);
+                } else {
+                  setSelectedPost(post);
+                }
+              }}
+            />
+          )}
+          
         </div>
 
         {/* MIDDLE PANEL */}
