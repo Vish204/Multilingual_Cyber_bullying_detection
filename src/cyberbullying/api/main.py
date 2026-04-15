@@ -78,6 +78,8 @@ def predict(request: TextRequest):
         # 🔥 1. REGEX PREPROCESSING: Strip @mentions and URLs instantly
         clean_text = re.sub(r'http\S+|www\.\S+|@\w+', '', request.text).strip()
 
+        print(f"🧹 Naked Text sent to AI: '{clean_text}'")
+
         # 🔥 2. SHORT TEXT FILTER: Kill noise like "BJP" or "By" (Improves accuracy!)
         if len(clean_text.split()) <= 2:
              model_time_ms = round((time.time() - start_time) * 1000, 2)
@@ -398,7 +400,8 @@ def generate_flat_csv(data):
             "Alert_Triggered": "Yes" if row.get("alert") else "No",
             "Moderator_Action": row.get("moderator_action", "Pending"),
             "Moderator_Reason": row.get("moderator_reason", ""),
-            "Created_At": row.get("timestamp", "")  # get_history renamed this to timestamp
+            # "Created_At": row.get("timestamp", "")  
+            "Created_At": str(row.get("timestamp", "")).split(".")[0].replace("T", " ")# get_history renamed this to timestamp
         }
         writer.writerow(flat_row)
 
