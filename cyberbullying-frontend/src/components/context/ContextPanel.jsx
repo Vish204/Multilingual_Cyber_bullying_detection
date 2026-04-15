@@ -7,10 +7,10 @@ export default function ContextPanel() {
         <div className="context-card">
         <h3 className="context-title">Severity Guide</h3>
         <ul>
-            <li><span className="low">LOW</span> → Normal / safe</li>
+            <li><span className="low">LOW / NONE</span> → Normal / safe</li>
             <li><span className="mild">MILD</span> → Slightly inappropriate</li>
-            <li><span className="medium">MEDIUM</span> → Harmful / needs attention</li>
-            <li><span className="high">HIGH</span> → Severe / immediate action</li>
+            <li><span className="medium">MODERATE</span> → Harmful / needs attention</li>
+            <li><span className="high">SEVERE</span> → Severe / immediate action</li>
         </ul>
         </div>
 

@@ -16,6 +16,7 @@ export default function FeedItem({ post, isSelected, onClick }) {
 
   return (
     <div
+      id={`feed-post-${post.id}`}
       onClick={onClick}
       className={`feed-item 
         ${post.severity} 

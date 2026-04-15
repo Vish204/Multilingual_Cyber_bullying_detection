@@ -8,7 +8,7 @@ export default function ActionButtons({ onAction }) {
 
   return (
     <div className="actions-container">
-      <h3 className="section-title">Moderation Actions</h3>
+      <h3 className="section-title">Moderator Actions</h3>
 
       <div className="action-buttons">
         <button className="btn ignore" onClick={() => onAction("ignore")}>
