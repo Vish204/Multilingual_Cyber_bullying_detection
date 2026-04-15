@@ -514,6 +514,11 @@ input::placeholder {
   border-left: 4px solid #ef4444; /* red */
 }
 
+/* Apply your exact severity border colors to the Middle Panel Card */
+.card.none { border-left: 4px solid #22c55e; } /* green */
+.card.mild { border-left: 4px solid #eab308; } /* yellow */
+.card.moderate { border-left: 4px solid #f97316; } /* orange */
+.card.severe { border-left: 4px solid #ef4444; } /* red */
 
 /* AI info container */
 .feed-ai {
@@ -1076,4 +1081,331 @@ input::placeholder {
   margin-left: 10px;
   font-size: 13px;
   color: #64748b;
+}
+
+
+
+/* Clear Filters Button */
+.clear-filters-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #dc2626; /* Red border to indicate a clear/reset action */
+  color: #dc2626;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  align-self: flex-start; /* Keeps it from stretching */
+}
+
+.clear-filters-btn:hover {
+  background: #fee2e2;
+}
+
+
+
+/* --- FILTER BAR GRID --- */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.filter-row-bottom {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.filter-actions-left {
+  display: flex;
+  gap: 8px;
+}
+
+.clear-filters-btn {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.clear-filters-btn.active {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.clear-filters-btn.active:hover {
+  background: #fee2e2;
+}
+
+.clear-filters-btn.disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* --- ALERT BANNER INTERNAL UI --- */
+.alert-banner-count {
+  margin-left: 12px;
+  font-size: 13px;
+  opacity: 0.9;
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.alert-banner-btn {
+  font-size: 14px;
+  font-weight: bold;
+  border: 1px solid white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.alert-banner-btn:hover {
+  opacity: 0.8;
+}
+
+
+
+
+
+
+
+
+/* --- FIXED FILTER LAYOUT --- */
+.filter-grid-2x2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Forces a perfect 2x2 box */
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.filter-controls-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-search-input {
+  flex: 1; /* Makes the search bar take up remaining empty space */
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  background: #f9fafb;
+}
+
+/* --- FEED HEADER ALIGNMENT --- */
+.feed-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.feed-header h3 {
+  margin: 0; /* Removes weird default spacing */
+}
+
+.feed-count-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px; /* Makes it a pill shape */
+  letter-spacing: 0.5px;
+}
+
+
+
+
+/* --- PREMIUM FILTER INPUTS & SELECTS --- */
+.filter-grid-2x2 select,
+.advanced-filters select,
+.filter-search-input {
+  width: 100%;
+  padding: 8px 12px; /* 🔥 More breathing room */
+  border-radius: 8px; /* Smoother, modern curves */
+  border: 1px solid #cbd5e1; /* Softer, premium border color */
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155; /* Dark slate text instead of pure black */
+  background-color: #ffffff; /* Pure white to pop against the blue panel */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle 3D depth */
+  transition: all 0.2s ease;
+  outline: none; /* Removes the ugly default browser outline */
+  cursor: pointer;
+}
+
+/* 🔥 The "Hover" State */
+.filter-grid-2x2 select:hover,
+.advanced-filters select:hover,
+.filter-search-input:hover {
+  border-color: #94a3b8;
+}
+
+/* 🔥 The "Focus" State (When a user clicks on it) */
+.filter-grid-2x2 select:focus,
+.advanced-filters select:focus,
+.filter-search-input:focus {
+  border-color: #3b82f6; /* Highlights blue */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); /* Soft blue glowing ring */
+}
+
+/* Slightly tweak the search button to match the new height */
+.search-btn, .filter-toggle-btn {
+  padding: 8px 12px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+
+/* --- ADVANCED FILTERS LAYOUT --- */
+.advanced-filters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Aligns perfectly with the top 2x2 grid */
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #cbd5e1; /* 🔥 Beautiful subtle separator line */
+}
+
+
+
+/* --- PREMIUM SEARCH & FILTER BUTTONS --- */
+.search-btn, 
+.filter-toggle-btn {
+  padding: 8px 12px; /* Matches the exact height of the dropdowns */
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-btn:hover, 
+.filter-toggle-btn:hover {
+  background-color: #f8fafc; /* Very light grey on hover */
+  border-color: #94a3b8;
+}
+
+/* 🔥 Active/Pressed state for the Filters toggle */
+.filter-toggle-btn.active {
+  background-color: #e2e8f0; /* Darker grey */
+  border-color: #94a3b8;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); /* Makes it look pressed in */
+  color: #0f172a;
+}
+
+
+
+
+
+
+
+
+
+/* --- PREMIUM SECTION TITLES --- */
+.section-title {
+  font-size: 15px;
+  font-weight: 700; /* Bolder */
+  color: #0f172a; /* Deeper slate color */
+  text-transform: uppercase; /* Makes it feel like a true section header */
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #f1f5f9; /* Subtle underline to anchor the section */
+  padding-bottom: 8px;
+  margin-bottom: 16px; /* More breathing room */
+}
+
+/* --- PREMIUM VERDICT HEADER --- */
+.middle-panel .verdict-box {
+  padding: 8px 16px; /* Bigger target */
+  border-radius: 8px;
+  font-size: 18px; /* Larger text */
+  font-weight: 700;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Drops it off the page */
+}
+
+/* --- METADATA PILLS (Platform, Time, Language) --- */
+.post-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px; /* Pushes it down from the verdict */
+  flex-wrap: wrap; /* Wraps if screen is small */
+}
+
+.meta-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+
+
+/* --- PREMIUM SEVERITY BADGES --- */
+.severity-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff; /* Forces text to be white */
+  text-transform: uppercase; /* Forces text to be MILD, not mild */
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Match these EXACTLY to your left border colors */
+.severity-severe { background-color: #ef4444; } /* Red */
+.severity-moderate { background-color: #f97316; } /* Orange */
+.severity-mild { background-color: #eab308; } /* Yellow */
+.severity-none { background-color: #22c55e; } /* Green */
+
+
+
+/* --- LOADING SPINNER ANIMATION --- */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 0;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  font-size: 32px; /* Made it slightly bigger so it looks great */
+  animation: spin 1.5s linear infinite; /* 1.5s is a nice smooth speed */
+  display: inline-block; /* CRITICAL: Emojis won't spin without this */
 }

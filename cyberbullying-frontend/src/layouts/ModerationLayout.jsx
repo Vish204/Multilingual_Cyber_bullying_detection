@@ -84,8 +84,8 @@ export default function ModerationLayout() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [actionMessage, setActionMessage] = useState(null); //toast for letting moderator know their action worked
   const [isLive, setIsLive] = useState(false);
-  const [alert, setAlert] = useState(null);
-  const [alertedIds, setAlertedIds] = useState(new Set());
+  // const [alert, setAlert] = useState(null);
+  // const [alertedIds, setAlertedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Start Stream");
 
@@ -119,6 +119,7 @@ export default function ModerationLayout() {
   // ✅ Filters
   const [filters, setFilters] = useState({
     platform: "all",
+    label: "all",
     severity: "all",
     language: "all",
     search: "",
@@ -134,6 +135,16 @@ export default function ModerationLayout() {
 
     if (filters.platform !== "all" && post.platform !== filters.platform) {
       return false;
+    }
+
+    // 🔥 NEW: Check the Verdict/Label filter
+    if (filters.label !== "all") {
+      // Safely check post.label (or map verdict back to backend standard just in case)
+      const postLabel = post.label || (post.verdict === "BULLYING" ? "cyberbullying" : "non-cyberbullying");
+      
+      if (postLabel !== filters.label) {
+        return false;
+      }
     }
 
     if (filters.severity !== "all" && post.severity !== filters.severity) {
@@ -175,11 +186,17 @@ export default function ModerationLayout() {
   // console.log("FEED:", feed);
   // console.log("FILTERED:", filteredFeed);
 
+  // 🔥 THE SMART QUEUE: Automatically finds unreviewed high-priority alerts
+  const pendingAlerts = feed.filter(post => post.alert === true && !post.reviewed);
+  const currentAlert = pendingAlerts.length > 0 ? pendingAlerts[0] : null;
+
 
 
     const selectedIndex = filteredFeed.findIndex(
       (p) => p.id === selectedPost?.id
     );
+
+    // const activeAlerts = feed.filter(post => post.alert === true && !post.reviewed);
 
   const handleExport = async () => {
     try {
@@ -379,47 +396,47 @@ const handleModeration = async (action, postId, reason = "") => {
     setTimeout(() => setActionMessage(null), 2000);
   };
 
-    const triggerAlert = (post) => {
-      if (post.severity === "severe") {
-        setAlert((prev) => {
-          // 🔥 prevent overwriting existing alert
-          if (prev && prev.post.id === post.id) return prev;
+    // const triggerAlert = (post) => {
+    //   if (post.severity === "severe") {
+    //     setAlert((prev) => {
+    //       // 🔥 prevent overwriting existing alert
+    //       if (prev && prev.post.id === post.id) return prev;
 
-          return {
-            message: `${post.platform} | ${post.verdict} | ${Math.round(post.confidence * 100)}%`,
-            post: post,
-          };
-        });
-      }
-    };
-    useEffect(() => {
-      // 🔥 Get latest high severity post (from bottom = newest)
-      const latestHigh = [...feed].reverse().find(
-        (post) => post.severity === "severe" && !alertedIds.has(post.id)
-      );
+    //       return {
+    //         message: `${post.platform} | ${post.verdict} | ${Math.round(post.confidence * 100)}%`,
+    //         post: post,
+    //       };
+    //     });
+    //   }
+    // };
+    // useEffect(() => {
+    //   // 🔥 Get latest high severity post (from bottom = newest)
+    //   const latestHigh = [...feed].reverse().find(
+    //     (post) => post.severity === "severe" && !alertedIds.has(post.id)
+    //   );
 
-      if (latestHigh) {
-        triggerAlert(latestHigh);
+    //   if (latestHigh) {
+    //     triggerAlert(latestHigh);
 
-        setAlertedIds((prev) => {
-          const updated = new Set(prev);
-          updated.add(latestHigh.id);
-          return updated;
-        });
-      }
-    }, [feed, alertedIds]);
+    //     setAlertedIds((prev) => {
+    //       const updated = new Set(prev);
+    //       updated.add(latestHigh.id);
+    //       return updated;
+    //     });
+    //   }
+    // }, [feed, alertedIds]);
 
     // 🔥 Alert cleanup (IMPORTANT FIX)
-    useEffect(() => {
-      if (!alert) return;
+    // useEffect(() => {
+    //   if (!alert) return;
 
-      const exists = feed.some(p => p.id === alert.post.id);
+    //   const exists = feed.some(p => p.id === alert.post.id);
 
-      if (!exists) {
-        setAlert(null);
-      }
+    //   if (!exists) {
+    //     setAlert(null);
+    //   }
 
-    }, [feed, alert]);
+    // }, [feed, alert]);
     
       // useEffect(() => {
       //   if (!isLive) return;
@@ -456,6 +473,16 @@ const handleModeration = async (action, postId, reason = "") => {
       //   runStream();
       // }, [isLive]);
 
+
+      // 🔥 AUTO-SCROLL TO SELECTED POST
+      useEffect(() => {
+        if (selectedPost) {
+          const element = document.getElementById(`feed-post-${selectedPost.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      }, [selectedPost]);
 
       useEffect(() => {
         if (!isLive) {
@@ -512,7 +539,7 @@ const handleModeration = async (action, postId, reason = "") => {
   return (
     <div className="moderation-container">
 
-      {alert && (
+      {/* {alert && (
         <div
           className="alert-banner"
             onClick={() => {
@@ -540,8 +567,36 @@ const handleModeration = async (action, postId, reason = "") => {
             ✖
           </button>
         </div>
-      )}
+      )} */}
 
+
+      {/* 🔥 THE NEW SMART ALERT BANNER */}
+      {currentAlert && (
+        <div 
+          className="alert-banner" 
+          onClick={() => setSelectedPost(currentAlert)}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", marginRight: "12px", letterSpacing: "1px", opacity: 0.9 }}>
+              HIGH PRIORITY
+            </span>
+            🚨 {currentAlert.platform} | {currentAlert.verdict} | {Math.round(currentAlert.confidence * 100)}%
+            <span className="alert-banner-count">
+              {pendingAlerts.length} Pending
+            </span>
+          </div>
+
+          <button 
+            className="alert-banner-btn"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevents the parent div click from firing twice
+              setSelectedPost(currentAlert);
+            }}
+          >
+            Review Next ➔
+          </button>
+        </div>
+      )}
 
       {actionMessage && (
         <div className="action-toast">
@@ -559,10 +614,17 @@ const handleModeration = async (action, postId, reason = "") => {
 
         {/* ✅ LEFT PANEL (ONLY ONE) */}
         <div className="panel left-panel">
-          <div className="live-indicator">
+          {/* <div className="live-indicator">
             <span className="live-dot"></span>
             Live Feed
+          </div> */}
+
+            {/* 🔥 Dynamic Live Indicator */}
+          <div className={`live-indicator ${!isLive ? "paused" : ""}`}>
+            {isLive ? <span className="live-dot"></span> : <span className="paused-icon">⏸️</span>}
+            {isLive ? "Live Fetching" : "Stream Paused"}
           </div>
+
         <h2>Live Moderation</h2>
         <button
         className="fetch-btn"
@@ -572,7 +634,7 @@ const handleModeration = async (action, postId, reason = "") => {
           {/* {isLoading ? "Loading..." : "Start Stream"} */}
           {loadingText}
         </button>
-        <div className="feed-header">
+        {/* <div className="feed-header">
           <h3>Feed</h3>
 
             <span className="feed-count">
@@ -586,7 +648,28 @@ const handleModeration = async (action, postId, reason = "") => {
           <FaDownload size={14} />
            Export CSV
         </button>
+        </div> */}
+        <div className="feed-header">
+          {/* 🔥 FIX 4: Groups "Feed" and the Badge tightly together on the left */}
+          <div className="feed-header-left">
+            <h3>Feed</h3>
+            <span className="feed-count-badge">
+              {selectedIndex >= 0
+                ? `${selectedIndex + 1} / ${filteredFeed.length}`
+                : `0 / ${filteredFeed.length}`}
+            </span>
+          </div>
+
+          <button className="btn export" onClick={handleExport}>
+            <FaDownload size={14} />
+             Export CSV
+          </button>
         </div>
+
+
+
+
+
           <FilterBar filters={filters} setFilters={setFilters} />
         {/* {!isLive ? (
           <div className="empty-state">
@@ -608,8 +691,8 @@ const handleModeration = async (action, postId, reason = "") => {
           )} */}
           {/* 🔥 FIX 3: Dynamic Left Panel State */}
           {isLoading ? (
-            <div className="empty-state" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ fontSize: "24px", animation: "spin 2s linear infinite" }}>⏳</div>
+            <div className="loading-container">
+              <div className="loading-spinner">⏳</div>
               <div>{loadingText}</div>
             </div>
           ) : feed.length === 0 ? (
