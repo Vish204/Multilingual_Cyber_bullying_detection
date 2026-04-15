@@ -195,6 +195,8 @@ def get_history(
             "id": str(item.pop("_id")),
             "text": item.get("text"),
             "platform": item.get("platform"),
+            "platform_post_id": item.get("platform_post_id", "N/A"),
+
             "timestamp": ist_string, # Map created_at back to timestamp for UI
 
             "content_type": item.get("content_type", "text"),
@@ -218,6 +220,7 @@ def get_history(
             
             # Flattened Moderator Actions
             "moderator_action": item.get("moderator", {}).get("action"),
+            "moderator_reason": item.get("moderator", {}).get("reason", ""),
 
             "latency": item.get("latency", {})
         }
@@ -252,18 +255,25 @@ def update_moderation_action(record_id, action, reason="", saved=False):
     # If the moderator wants to save it for retraining, move it to the curated collection.
     if saved:
         doc = collection.find_one({"_id": ObjectId(record_id)})
-        # We only want to train the ML on actual toxic posts, so verify the label
-        if doc and doc["prediction"]["label"] == "cyberbullying":
-            # Use replace_one with upsert=True to prevent duplicates if clicked twice
+        # if doc and doc["prediction"]["label"] == "cyberbullying":
+        #     training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+
+        if doc:
+            # 🔥 NEW: If the AI missed it (False Negative), but the human deleted/reported it,
+            # we explicitly tag it as a human-corrected label so the AI learns next time!
+            if action in ["delete", "report"] and doc["prediction"]["label"] == "non-cyberbullying":
+                doc["human_corrected_label"] = "cyberbullying"
+
+            # Save to the curated dataset
             training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        else:
+            # If the moderator un-saves it, we remove it from the training pool
+            training_collection.delete_one({"_id": ObjectId(record_id)})
 
     return result.modified_count
 
-### analytics functions below ###
-
 
 ### analytics functions below ###
-
 # ------------------------------------------------
 # Severity Analytics
 # ------------------------------------------------
