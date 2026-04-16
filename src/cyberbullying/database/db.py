@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from datetime import datetime, timezone
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import pytz
 
@@ -288,6 +288,51 @@ def get_severity_stats():
     ]
     results = list(collection.aggregate(pipeline))
     return {item["_id"]: item["count"] for item in results if item["_id"]}
+
+
+
+# ------------------------------------------------
+# dashboard page summary (with 15-day window)
+# ------------------------------------------------
+def get_dashboard_summary():
+    # 1. Define the 15-day window for metrics
+    fifteen_days_ago = datetime.now(IST) - timedelta(days=15)
+    
+    # 2. Total Posts (Last 15 Days)
+    total_recent = collection.count_documents({"created_at": {"$gte": fifteen_days_ago}})
+    
+    # 3. Bullying Posts (Last 15 Days) - Moderate + Severe
+    bullying_recent = collection.count_documents({
+        "created_at": {"$gte": fifteen_days_ago},
+        "prediction.severity": {"$in": ["moderate", "severe"]}
+    })
+    
+    # 4. Pending High Priority (All time - because work shouldn't expire)
+    # Severe/Moderate posts that haven't been reviewed
+    pending_priority = collection.count_documents({
+        "flags.reviewed": False,
+        "prediction.severity": {"$in": ["moderate", "severe"]}
+    })
+
+    # 5. Average Latency (Last 100 Posts)
+    # We look at the 'latency.total_ms' field
+    latency_pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$limit": 50},
+        {"$group": {
+            "_id": None,
+            "avg_latency": {"$avg": "$latency.total_ms"}
+        }}
+    ]
+    latency_res = list(collection.aggregate(latency_pipeline))
+    avg_ms = round(latency_res[0]["avg_latency"], 1) if latency_res else 0
+
+    return {
+        "total_posts": total_recent,
+        "bullying_percentage": round((bullying_recent / total_recent * 100), 1) if total_recent > 0 else 0,
+        "pending_priority": pending_priority,
+        "avg_latency_ms": avg_ms
+    }
 
 # ------------------------------------------------
 # Platform Analytics (Unchanged)
