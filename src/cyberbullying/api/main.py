@@ -19,6 +19,7 @@ from cyberbullying.database.db import update_moderation_action
 from cyberbullying.database.db import get_severity_stats
 from cyberbullying.database.db import get_platform_stats
 from cyberbullying.database.db import get_trend_stats
+from cyberbullying.database.db import get_dashboard_summary
 from cyberbullying.database.db import get_language_distribution
 from cyberbullying.collector.run_collector import run_once
 
@@ -305,6 +306,12 @@ def language_analytics():
         return {"error": str(e)}
 
 
+@app.get("/analytics/dashboard-summary")
+def dashboard_summary():
+    try:
+        return get_dashboard_summary()
+    except Exception as e:
+        return {"error": str(e)}
 
     
 # ================================
@@ -434,3 +441,4 @@ def export_full_dataset():
         return generate_flat_csv(data)
     except Exception as e:
         return {"error": str(e)}
+    
