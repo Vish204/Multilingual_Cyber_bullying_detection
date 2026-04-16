@@ -350,3 +350,29 @@
 .dashboard-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 } */
+
+/* Add to dashboard.css */
+.section-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.no-alerts-card {
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px dashed #cbd5e1;
+}
+
+.no-alerts-text {
+  color: #64748b;
+}
+
+.stat-sub-label {
+  font-size: 10px;
+  color: #94a3b8;
+  display: block;
+  margin-top: 4px;
+}
