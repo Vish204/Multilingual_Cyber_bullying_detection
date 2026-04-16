@@ -59,3 +59,16 @@ export async function collectData() {
   const res = await fetch(`${BASE_URL}/collect`);
   return res.json();
 }
+
+
+export async function fetchDashboardAlerts() {
+  // We hit your existing /history endpoint but with dashboard-specific filters
+  const res = await fetch(`${BASE_URL}/history?alert=true&reviewed=false&limit=5`);
+  return res.json();
+}
+
+
+export async function fetchDashboardSummary() {
+  const res = await fetch(`${BASE_URL}/analytics/dashboard-summary`);
+  return res.json();
+}
