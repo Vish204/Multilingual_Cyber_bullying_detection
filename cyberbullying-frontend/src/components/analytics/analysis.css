@@ -1,0 +1,159 @@
+/* src/components/analytics/analysis.css */
+
+.analysis-container {
+  padding: 24px;
+  background: #f3f4f6;
+  min-height: 100vh;
+}
+
+/* --- HEADER STYLING --- */
+.analysis-header {
+    text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e5e7eb; /* Adds a nice separator line */
+}
+
+.analysis-header-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  background: linear-gradient(135deg, #111827 0%, #4f46e5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
+}
+
+.analysis-header-subtitle {
+  font-size: 15px;
+  color: #6b7280;
+  margin: 0 auto;
+  max-width: 600px; /* Keeps the subtitle cleanly wrapped */
+}
+
+/* --- GRID LAYOUT --- */
+.analysis-grid {
+  display: grid;
+  /* We use 12 columns. 
+     Left card = 3 cols, Middle Chart = 6 cols, Right Card = 3 cols 
+     But let's add a bit more gap and control max-width better */
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px; /* Increased gap for breathing room */
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Base Card Styling */
+.analysis-card {
+  background: white;
+  padding: 24px; /* Increased padding */
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0; /* Standardized margin */
+}
+
+/* Stat Typography */
+.stat-value {
+  font-size: 36px; /* Slightly larger numbers */
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  line-height: 1;
+}
+
+.stat-sub {
+  font-size: 13px; /* Slightly larger subtitle */
+  color: #6b7280;
+  margin: 0;
+}
+
+/* --- CHART CONTAINERS --- */
+.chart-container {
+  position: relative;
+  height: 200px; /* Increased height from 180 to 200px */
+  width: 100%;
+  margin-top: auto; /* Pushes chart to bottom if card is tall */
+}
+
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Align top */
+  margin-bottom: 20px; /* More space before chart starts */
+}
+
+/* Column Spans */
+/* Left Stats: 3 cols */
+.col-3 { grid-column: span 3; }
+/* Middle Trend: 6 cols */
+.col-6 { grid-column: span 6; }
+/* Wide Chart (for later): 8 cols */
+.col-8 { grid-column: span 8; }
+/* Narrow Chart (for later): 4 cols */
+.col-4 { grid-column: span 4; }
+.col-12 { grid-column: span 12; }
+
+/* Colors */
+.text-blue { color: #2563eb; }
+.text-purple { color: #7c3aed; }
+
+
+/* .mini-stat-card {
+  height: fit-content !important;
+  align-self: start !important; 
+  padding-bottom: 24px !important; 
+} */
+
+.mini-stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.text-green { color: #10b981; }
+.text-orange { color: #f59e0b; }
+
+.text-green { color: #10b981; }
+.text-orange { color: #f59e0b; }
+
+/* Ensure cards in a split row have the same base height */
+.col-6 {
+  grid-column: span 6;
+  min-height: 280px;
+}
+
+/* Specific styling for Doughnut chart text */
+.chart-container canvas {
+  max-width: 100%;
+}
+
+.toggle-btn {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
