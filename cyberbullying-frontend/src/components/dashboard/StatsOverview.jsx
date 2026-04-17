@@ -26,7 +26,13 @@ export default function StatsOverview() {
     { label: "Total (15d)", value: stats.total_posts, color: "blue" },
     { label: "Bullying %", value: `${stats.bullying_percentage}%`, color: "red" },
     { label: "Pending Priority", value: stats.pending_priority, color: "orange" },
-    { label: "System Speed", value: `⚡ ${stats.avg_latency_ms}ms`, color: "green", sub: "Avg last 50 UGC" },
+    // { label: "System Speed", value: `⚡ ${stats.avg_latency_ms}ms`, color: "green", sub: "Avg last 50 UGC" },
+    { 
+      label: "Supported Languages", // 👈 Replaced Latency with Languages
+      value: "14", 
+      color: "green", 
+      sub: "Multilingual coverage" 
+    },
   ];
 
   return (
