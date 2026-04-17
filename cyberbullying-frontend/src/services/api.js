@@ -72,3 +72,11 @@ export async function fetchDashboardSummary() {
   const res = await fetch(`${BASE_URL}/analytics/dashboard-summary`);
   return res.json();
 }
+
+
+
+export async function fetchAnalyticsOverview() {
+  const res = await fetch(`${BASE_URL}/analytics/overview`);
+  if (!res.ok) throw new Error("Failed to fetch analytics");
+  return res.json();
+}
