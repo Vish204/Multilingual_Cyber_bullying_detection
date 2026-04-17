@@ -21,6 +21,7 @@ from cyberbullying.database.db import get_platform_stats
 from cyberbullying.database.db import get_trend_stats
 from cyberbullying.database.db import get_dashboard_summary
 from cyberbullying.database.db import get_language_distribution
+from cyberbullying.database.db import get_analytics_overview
 from cyberbullying.collector.run_collector import run_once
 
 
@@ -311,6 +312,16 @@ def dashboard_summary():
     try:
         return get_dashboard_summary()
     except Exception as e:
+        return {"error": str(e)}
+    
+
+@app.get("/analytics/overview")
+def analytics_overview():
+    try:
+        data = get_analytics_overview()
+        return data
+    except Exception as e:
+        print(f"❌ Analytics Aggregation Error: {e}")
         return {"error": str(e)}
 
     

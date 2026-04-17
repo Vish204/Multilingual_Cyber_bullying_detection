@@ -342,27 +342,58 @@ def get_platform_stats():
         {
             "$group": {
                 "_id": "$platform",
-                "count": {"$sum": 1}
+                "total": {"$sum": 1},
+                # Conditionally count only the posts flagged as cyberbullying
+                "flagged": {
+                    "$sum": {
+                        "$cond": [{"$eq": ["$prediction.label", "cyberbullying"]}, 1, 0]
+                    }
+                }
             }
         }
     ]
     results = list(collection.aggregate(pipeline))
-    return {item["_id"]: item["count"] for item in results if item["_id"]}
+    
+    # Return structure: { "reddit": {"total": 120, "flagged": 45}, "youtube": {...} }
+    return {
+        item["_id"]: {
+            "total": item["total"], 
+            "flagged": item["flagged"]
+        } 
+        for item in results if item["_id"]
+    }
 
 # ------------------------------------------------
 # Trends (Time-based)
 # ------------------------------------------------
+
+
 def get_trend_stats():
+    # 1. Calculate the exact cutoff date (15 days ago from right now)
+    cutoff_date = datetime.utcnow() - timedelta(days=15)
+
     pipeline = [
+        # 2. FILTER FIRST: Only grab records newer than 15 days ago
+        {
+            "$match": {
+                "created_at": {"$gte": cutoff_date} 
+            }
+        },
+        # 3. GROUP & COUNT: Same logic as before, but now only on the filtered data
         {
             "$group": {
                 "_id": {
                     "$dateToString": {
                         "format": "%Y-%m-%d",
-                        "date": "$created_at"  # 🔥 FIXED FROM "timestamp"
+                        "date": "$created_at" 
                     }
                 },
-                "count": {"$sum": 1}
+                "total": {"$sum": 1},
+                "flagged": {
+                    "$sum": {
+                        "$cond": [{"$eq": ["$prediction.label", "cyberbullying"]}, 1, 0]
+                    }
+                }
             }
         },
         {"$sort": {"_id": 1}}
@@ -389,46 +420,101 @@ def get_language_distribution():
     }
 
 
+# ------------------------------------------------
+# 📊 PHASE 2: UNIFIED ANALYTICS AGGREGATOR
+# ------------------------------------------------
 
-# # ------------------------------------------------
-# # Export Data (for CSV/Excel)
-# # ------------------------------------------------
-# def export_data(limit, platform=None, severity=None, reviewed=None,
-#                 label=None, alert=None, language=None, content_type=None):
+def get_analytics_overview():
+    fifteen_days_ago = datetime.now(IST) - timedelta(days=15)
+    
+    # 2. Update this from {} to use the date filter
+    total_analyzed = collection.count_documents({
+        "created_at": {"$gte": fifteen_days_ago}
+    })
+    # 1. Base Stats
+    # total_analyzed = collection.count_documents({})
+    
+    # 2. Severity (Unreviewed only - for 'Current Threat' view)
+    sev_pipeline = [
+        {"$match": {"flags.reviewed": False}},
+        {"$group": {"_id": "$prediction.severity", "count": {"$sum": 1}}}
+    ]
+    severity_data = {item["_id"]: item["count"] for item in collection.aggregate(sev_pipeline) if item["_id"]}
 
-#     query = {}
+    # 3. Platform Distribution
+    platform_data = get_platform_stats() # Reusing your existing function
 
-#     if platform:
-#         query["platform"] = platform
+    # 4. System Trust Levels (Confidence Bins)
+    # Mapping confidence (0-100) to Moderator-friendly labels
+    trust_pipeline = [
+        {
+            "$project": {
+                "level": {
+                    "$cond": [
+                        {"$gte": ["$prediction.confidence", 80]}, "High Trust",
+                        {"$cond": [{"$gte": ["$prediction.confidence", 50]}, "Needs Review", "Requires Attention"]}
+                    ]
+                }
+            }
+        },
+        {"$group": {"_id": "$level", "count": {"$sum": 1}}}
+    ]
+    trust_levels = {item["_id"]: item["count"] for item in collection.aggregate(trust_pipeline)}
 
-#     if severity:
-#         query["severity"] = severity
+    # 5. Language Distribution (Cleaned and Full Array)
+    lang_raw = get_language_distribution() 
+    
+    # 🔥 THE ASSASSIN: Remove 'unknown', 'none', or empty strings before sorting
+    clean_langs = {
+        k: v for k, v in lang_raw.items() 
+        if k and str(k).strip().lower() not in ["unknown", "none", ""]
+    }
+    
+    # Sort the clean data highest to lowest
+    sorted_langs = sorted(clean_langs.items(), key=lambda x: x[1], reverse=True)
+    
+    # Format as a complete list of dictionaries
+    all_languages = [{"language": k.capitalize(), "count": v} for k, v in sorted_langs]
 
-#     if reviewed is not None:
-#         if reviewed == False:
-#             query["$or"] = [
-#                 {"reviewed": False},
-#                 {"reviewed": {"$exists": False}}
-#             ]
-#         else:
-#             query["reviewed"] = True
 
-#     if label:
-#         query["label"] = label
+    # 6. AI vs Moderator Alignment (20-post threshold)
+    reviewed_count = collection.count_documents({"flags.reviewed": True})
+    alignment = None
+    if reviewed_count >= 20:
+        agreed = collection.count_documents({
+            "flags.reviewed": True,
+            "$or": [
+                {"prediction.label": "cyberbullying", "moderator.action": {"$in": ["delete", "report"]}},
+                {"prediction.label": "non-cyberbullying", "moderator.action": "ignore"}
+            ]
+        })
+        alignment = {
+            "agreed": agreed,
+            "reevaluated": reviewed_count - agreed,
+            "accuracy_rate": round((agreed / reviewed_count) * 100, 1)
+        }
 
-#     if alert is not None:
-#         query["alert"] = alert
+    # 7. Trends (Last 15 days)
+    trends = get_trend_stats() # Reusing your existing function
 
-#     if language:
-#         query["language"] = language
+    latency_pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$limit": 50},
+        {"$group": {
+            "_id": None,
+            "avg_latency": {"$avg": "$latency.total_ms"}
+        }}
+    ]
+    latency_res = list(collection.aggregate(latency_pipeline))
+    avg_latency_ms = round(latency_res[0]["avg_latency"], 1) if latency_res else 0
 
-#     if content_type:
-#         query["content_type"] = content_type
-
-#     results = list(
-#         collection.find(query, {"_id": 0})
-#         .sort("timestamp", -1)
-#         .limit(limit)
-#     )
-
-#     return results
+    return {
+        "total_analyzed_posts": total_analyzed,
+        "severity": severity_data,
+        "platforms": platform_data,
+        "trust_levels": trust_levels,
+        "languages": all_languages,
+        "alignment": alignment,
+        "trends": trends,
+        "system_latency_ms": avg_latency_ms
+    }
