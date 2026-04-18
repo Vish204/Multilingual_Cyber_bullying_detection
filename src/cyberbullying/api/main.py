@@ -14,6 +14,7 @@ import re
 
 from cyberbullying.inference.inference_service import predict_post
 from cyberbullying.explainability.shap_explainer import explain_text
+
 from cyberbullying.database.db import save_prediction, get_history
 from cyberbullying.database.db import update_moderation_action
 from cyberbullying.database.db import get_severity_stats
@@ -22,6 +23,8 @@ from cyberbullying.database.db import get_trend_stats
 from cyberbullying.database.db import get_dashboard_summary
 from cyberbullying.database.db import get_language_distribution
 from cyberbullying.database.db import get_analytics_overview
+from cyberbullying.database.db import get_audit_history
+
 from cyberbullying.collector.run_collector import run_once
 
 
@@ -453,3 +456,15 @@ def export_full_dataset():
     except Exception as e:
         return {"error": str(e)}
     
+
+# ------------------------------------------------
+# History page
+# ------------------------------------------------
+
+@app.get("/history/reviewed")
+def audit_history_route():
+    try:
+        data = get_audit_history()
+        return {"status": "success", "data": data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

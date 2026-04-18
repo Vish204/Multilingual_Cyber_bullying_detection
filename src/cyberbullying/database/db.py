@@ -421,7 +421,7 @@ def get_language_distribution():
 
 
 # ------------------------------------------------
-# 📊 PHASE 2: UNIFIED ANALYTICS AGGREGATOR
+# PHASE 2:ANALYTICS PAGE  UNIFIED ANALYTICS AGGREGATOR
 # ------------------------------------------------
 
 def get_analytics_overview():
@@ -518,3 +518,51 @@ def get_analytics_overview():
         "trends": trends,
         "system_latency_ms": avg_latency_ms
     }
+
+# ------------------------------------------------
+#  PHASE 3:HISTORY
+# ------------------------------------------------
+def get_audit_history():
+    # 1. Fetch the latest 100 reviewed posts, sorted newest first
+    cursor = collection.find({"flags.reviewed": True}).sort("created_at", -1).limit(100)
+    history_data = []
+
+    for post in cursor:
+        # 2. Extract values safely
+        prediction = post.get("prediction", {})
+        ai_severity = prediction.get("severity", "none").lower()
+        
+        moderator = post.get("moderator", {})
+        mod_action = moderator.get("action", "ignored").lower()
+
+        # 3. Calculate Semantic Alignment
+        alignment_status = "Unknown"
+        
+        # Rule 1: True Positive (AI saw threat, Human agreed)
+        if ai_severity in ["severe", "moderate"] and mod_action in ["delete", "report"]:
+            alignment_status = "Agreed"
+        # Rule 2: True Negative (AI saw nothing, Human agreed)
+        elif ai_severity in ["none", "mild"] and mod_action == "ignore":
+            alignment_status = "Agreed"
+        # Rule 3: False Positive (AI too aggressive, Human overruled)
+        elif ai_severity in ["severe", "moderate"] and mod_action == "ignore":
+            alignment_status = "Overruled"
+        # Rule 4: False Negative (AI missed it, Human overruled)
+        elif ai_severity in ["none", "mild"] and mod_action in ["delete", "report"]:
+            alignment_status = "Overruled"
+        elif mod_action == "pending":
+            alignment_status = "Pending Review"
+
+        # 4. Build the clean, flat payload for the React Table
+        history_data.append({
+            "id": str(post.get("_id")),
+            "timestamp": post.get("created_at"), 
+            "platform": post.get("platform", "Unknown"),
+            "text": post.get("text", ""),
+            "ai_severity": ai_severity,
+            "ai_confidence": prediction.get("confidence", 0),
+            "moderator_action": mod_action,
+            "alignment_status": alignment_status
+        })
+
+    return history_data
