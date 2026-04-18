@@ -1,3 +1,6 @@
-export default function History() {
-  return <h1>History</h1>;
+import React from 'react';
+import HistoryLayout from '../components/history/HistoryLayout';
+
+export default function HistoryPage() {
+  return <HistoryLayout />;
 }
