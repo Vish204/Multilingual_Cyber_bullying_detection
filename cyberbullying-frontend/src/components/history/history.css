@@ -1,0 +1,125 @@
+.history-container {
+  padding: 20px;
+  background: #f9fafb;
+  min-height: calc(100vh - 60px);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.history-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.history-subtext {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.history-controls {
+  display: flex;
+  gap: 15px;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.export-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #10b981;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-wrapper {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overflow-y: auto;
+  max-height: 65vh; /* Enables vertical scrolling */
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.audit-table th {
+  position: sticky;
+  top: 0;
+  background: #f3f4f6;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-transform: uppercase;
+  z-index: 10;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.audit-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+/* The Magic Truncation for Content */
+.content-cell {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #4b5563;
+}
+
+/* Badges */
+.ai-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+.ai-badge.severe { background: #fee2e2; color: #b91c1c; }
+.ai-badge.moderate { background: #ffedd5; color: #c2410c; }
+.ai-badge.mild { background: #fef3c7; color: #b45309; }
+.ai-badge.none { background: #d1fae5; color: #047857; }
+
+.mod-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; background: #e5e7eb; color: #374151; }
+
+.align-agreed { color: #059669; font-weight: 600; }
+.align-overruled { 
+  color: #b91c1c; /* A deeper, stronger red */
+  font-weight: 800; /* Extra bold */
+  letter-spacing: 0.3px; /* Slightly spread out to grab attention */
+  background: #fee2e2; /* Very subtle red background box */
+  padding: 4px 8px; /* Give the background some breathing room */
+  border-radius: 4px;
+}
+
+.align-pending {
+  color: #d97706;
+  font-weight: 600;
+}
