@@ -517,6 +517,23 @@ The system will automatically **collect posts/comments from online platforms and
 
 ---
 
+# Dashboard ScreenShot
+
+## 1) Landing Page
+![alt text](Images/image-0.png)
+
+## 2) Moderation Page 
+![alt text](Images/image-1.png)
+![alt text](Images/image-2.png)
+
+## 3) Analytics Page
+![alt text](Images/image-3.png)
+
+## 4) History Page
+![alt text](Images/image-4.png)
+
+---
+
 # Reproducibility
 
 Raw data stored in:
