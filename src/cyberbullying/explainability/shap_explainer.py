@@ -91,7 +91,8 @@ def generate_summary(triggers, sigs, prediction_data=None):
     
     # Priority 3: Keyword Hits / Sarcasm
     if sigs.get("keyword_present", 0) > 0 or sigs.get("keyword_ratio", 0) > 0:
-        return "Flagged due to presence of targeted toxic keywords."
+        # return "Flagged due to presence of targeted toxic keywords."
+        return "Flagged due to harmful intent "
     if prediction_data and prediction_data.get("sarcasm", 0) > 60:
         return "Flagged due to high probability of toxic sarcasm."
         
