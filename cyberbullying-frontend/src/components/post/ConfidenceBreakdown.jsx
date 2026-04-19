@@ -1,5 +1,8 @@
 export default function ConfidenceBreakdown({ data }) {
-  const base = (data.confidence * 100).toFixed(0); // TEMP (replace later with p_cb)
+  // console.log("🚨 RAW DATA IN BREAKDOWN:", data);
+  
+  //const base = ((data.signals?.components?.base_cyberbullying || 0) * 100).toFixed(0); // TEMP (replace later with p_cb)
+  const base = ((data?.base_score || 0) * 100).toFixed(0);
   const emotion = (data.emotion_score * 100).toFixed(0);
   const sarcasm = (data.sarcasm * 100).toFixed(0);
   const final = (data.confidence * 100).toFixed(0);
