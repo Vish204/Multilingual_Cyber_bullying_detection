@@ -42,6 +42,14 @@ data/emotion/
 data/sarcasm/
 
 # =========================
+# Text Files and testing PYTHON scripts
+# =========================
+commits_detailed.txt
+commits.txt
+verify_features.py
+PHASE 1 codes and files from madhur folder.txt
+
+# =========================
 # OS
 # =========================
 .DS_Store
