@@ -184,8 +184,25 @@ def get_history(
     for item in results:
 
         # 🔥 Grab the Mongo UTC time and forcefully format it as a beautiful IST string
-        raw_time = item.get("created_at")
+        # raw_time = item.get("created_at")
+        # if raw_time:
+        #     utc_time = raw_time.replace(tzinfo=timezone.utc) if raw_time.tzinfo is None else raw_time
+        #     ist_string = utc_time.astimezone(IST).isoformat()  # Looks like: '2026-04-15T00:25:48+05:30'
+        # else:
+        #     ist_string = None
+
+        # 🔥 Grab the real platform time first, fallback to DB insertion time
+        raw_time = item.get("platform_time") or item.get("created_at")
+        
         if raw_time:
+            # If the scraper saved it as a string, convert it to a datetime object first
+            if isinstance(raw_time, str):
+                try:
+                    raw_time = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+                except ValueError:
+                    raw_time = item.get("created_at") # Fallback if the string is broken
+                    
+            # 🔥 YOUR EXACT IST CONVERSION LOGIC
             utc_time = raw_time.replace(tzinfo=timezone.utc) if raw_time.tzinfo is None else raw_time
             ist_string = utc_time.astimezone(IST).isoformat()  # Looks like: '2026-04-15T00:25:48+05:30'
         else:
@@ -208,6 +225,8 @@ def get_history(
             "sarcasm": item.get("signals", {}).get("sarcasm"),
 
             "emotions": item.get("signals", {}).get("emotions", []),
+
+            "components": item.get("signals", {}).get("components", {}),
             
             # Flattened Flags
             "alert": item.get("flags", {}).get("alert"),
@@ -236,12 +255,69 @@ def get_history(
 # 🔹 Update Moderator Action & Human-in-the-Loop
 # ------------------------------------------------
 
-def update_moderation_action(record_id, action, reason="", saved=False):
+# def update_moderation_action(record_id, action, reason="", saved=False):
 
-    # 1. Update the main collection flags
+#     # 1. Update the main collection flags
+#     update_fields = {
+#         "flags.reviewed": True,
+#         "flags.saved": saved,
+#         "moderator.action": action,
+#         "moderator.reason": reason
+#     }
+    
+#     result = collection.update_one(
+#         {"_id": ObjectId(record_id)},
+#         {"$set": update_fields}
+#     )
+
+#     # 2. 🔥 The Human-in-the-Loop feature (Data Curation)
+#     # If the moderator wants to save it for retraining, move it to the curated collection.
+#     if saved:
+#         doc = collection.find_one({"_id": ObjectId(record_id)})
+#         # if doc and doc["prediction"]["label"] == "cyberbullying":
+#         #     training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+
+#         if doc:
+#             # 🔥 NEW: If the AI missed it (False Negative), but the human deleted/reported it,
+#             # we explicitly tag it as a human-corrected label so the AI learns next time!
+#             if action in ["delete", "report"] and doc["prediction"]["label"] == "non-cyberbullying":
+#                 doc["human_corrected_label"] = "cyberbullying"
+
+#             # Save to the curated dataset
+#             training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+#         else:
+#             # If the moderator un-saves it, we remove it from the training pool
+#             training_collection.delete_one({"_id": ObjectId(record_id)})
+
+#     return result.modified_count
+
+def update_moderation_action(record_id, action, reason="", saved=False):
+    # 1. Fetch the doc FIRST so we can check the AI's prediction
+    doc = collection.find_one({"_id": ObjectId(record_id)})
+    if not doc:
+        return 0
+
+    # 2. THE HYBRID AUTO-SAVE BRAIN
+    is_overruled = False
+    pred_label = doc.get("prediction", {}).get("label", "")
+
+    # If AI missed it (False Negative) but human deleted/reported it
+    if pred_label == "non-cyberbullying" and action in ["delete", "report"]:
+        is_overruled = True
+        doc["human_corrected_label"] = "cyberbullying"
+    
+    # If AI falsely flagged it (False Positive) but human ignored it
+    elif pred_label == "cyberbullying" and action == "ignore":
+        is_overruled = True
+        doc["human_corrected_label"] = "non-cyberbullying"
+
+    # Final Save Status: True if manually clicked "Save" OR if it was Overruled!
+    final_saved = saved or is_overruled
+
+    # 3. Update the main collection
     update_fields = {
         "flags.reviewed": True,
-        "flags.saved": saved,
+        "flags.saved": final_saved,
         "moderator.action": action,
         "moderator.reason": reason
     }
@@ -251,27 +327,13 @@ def update_moderation_action(record_id, action, reason="", saved=False):
         {"$set": update_fields}
     )
 
-    # 2. 🔥 The Human-in-the-Loop feature (Data Curation)
-    # If the moderator wants to save it for retraining, move it to the curated collection.
-    if saved:
-        doc = collection.find_one({"_id": ObjectId(record_id)})
-        # if doc and doc["prediction"]["label"] == "cyberbullying":
-        #     training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
-
-        if doc:
-            # 🔥 NEW: If the AI missed it (False Negative), but the human deleted/reported it,
-            # we explicitly tag it as a human-corrected label so the AI learns next time!
-            if action in ["delete", "report"] and doc["prediction"]["label"] == "non-cyberbullying":
-                doc["human_corrected_label"] = "cyberbullying"
-
-            # Save to the curated dataset
-            training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
-        else:
-            # If the moderator un-saves it, we remove it from the training pool
-            training_collection.delete_one({"_id": ObjectId(record_id)})
+    # 4. Route to Training Data
+    if final_saved:
+        # Save to curated dataset with the updated fields/labels
+        doc.update(update_fields)
+        training_collection.replace_one({"_id": doc["_id"]}, doc, upsert=True)
 
     return result.modified_count
-
 
 ### analytics functions below ###
 # ------------------------------------------------
@@ -304,34 +366,34 @@ def get_dashboard_summary():
     # 3. Bullying Posts (Last 15 Days) - Moderate + Severe
     bullying_recent = collection.count_documents({
         "created_at": {"$gte": fifteen_days_ago},
-        "prediction.severity": {"$in": ["moderate", "severe"]}
+        "prediction.label": "cyberbullying"
     })
     
     # 4. Pending High Priority (All time - because work shouldn't expire)
     # Severe/Moderate posts that haven't been reviewed
     pending_priority = collection.count_documents({
         "flags.reviewed": False,
-        "prediction.severity": {"$in": ["moderate", "severe"]}
+        "prediction.severity": {"$in": ["severe"]}
     })
 
-    # 5. Average Latency (Last 100 Posts)
-    # We look at the 'latency.total_ms' field
-    latency_pipeline = [
-        {"$sort": {"created_at": -1}},
-        {"$limit": 50},
-        {"$group": {
-            "_id": None,
-            "avg_latency": {"$avg": "$latency.total_ms"}
-        }}
-    ]
-    latency_res = list(collection.aggregate(latency_pipeline))
-    avg_ms = round(latency_res[0]["avg_latency"], 1) if latency_res else 0
+    # # 5. Average Latency (Last 100 Posts)
+    # # We look at the 'latency.total_ms' field
+    # latency_pipeline = [
+    #     {"$sort": {"created_at": -1}},
+    #     {"$limit": 50},
+    #     {"$group": {
+    #         "_id": None,
+    #         "avg_latency": {"$avg": "$latency.total_ms"}
+    #     }}
+    # ]
+    # latency_res = list(collection.aggregate(latency_pipeline))
+    # avg_ms = round(latency_res[0]["avg_latency"], 1) if latency_res else 0
 
     return {
         "total_posts": total_recent,
         "bullying_percentage": round((bullying_recent / total_recent * 100), 1) if total_recent > 0 else 0,
         "pending_priority": pending_priority,
-        "avg_latency_ms": avg_ms
+        # "avg_latency_ms": avg_ms
     }
 
 # ------------------------------------------------
@@ -474,15 +536,32 @@ def get_analytics_overview():
     sorted_langs = sorted(clean_langs.items(), key=lambda x: x[1], reverse=True)
     
     # Format as a complete list of dictionaries
-    all_languages = [{"language": k.capitalize(), "count": v} for k, v in sorted_langs]
+    # all_languages = [{"language": k.capitalize(), "count": v} for k, v in sorted_langs]
+
+    # Map ugly system labels to beautiful UI labels
+    lang_map = {
+        "keywords_hinglish_romanized": "Hinglish",
+        "hindi_or_marathi": "Hindi / Marathi",
+        "en": "English",
+        "english": "English"
+    }
+    
+    all_languages = []
+    for k, v in sorted_langs:
+        clean_name = lang_map.get(k.lower(), k.capitalize())
+        all_languages.append({"language": clean_name, "count": v})
 
 
-    # 6. AI vs Moderator Alignment (20-post threshold)
-    reviewed_count = collection.count_documents({"flags.reviewed": True})
+    # 6. AI vs Moderator Alignment
+    # 🔥 FIX: Only count posts where a DEFINITIVE terminal action was taken
+    valid_decisions_count = collection.count_documents({
+        "moderator.action": {"$in": ["ignore", "delete", "report"]}
+    })
+    
     alignment = None
-    if reviewed_count >= 20:
+    if valid_decisions_count >= 5: # Our new testing threshold
         agreed = collection.count_documents({
-            "flags.reviewed": True,
+            "moderator.action": {"$in": ["ignore", "delete", "report"]},
             "$or": [
                 {"prediction.label": "cyberbullying", "moderator.action": {"$in": ["delete", "report"]}},
                 {"prediction.label": "non-cyberbullying", "moderator.action": "ignore"}
@@ -490,8 +569,8 @@ def get_analytics_overview():
         })
         alignment = {
             "agreed": agreed,
-            "reevaluated": reviewed_count - agreed,
-            "accuracy_rate": round((agreed / reviewed_count) * 100, 1)
+            "reevaluated": valid_decisions_count - agreed,
+            "accuracy_rate": round((agreed / valid_decisions_count) * 100, 1)
         }
 
     # 7. Trends (Last 15 days)
