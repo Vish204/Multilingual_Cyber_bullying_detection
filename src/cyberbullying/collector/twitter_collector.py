@@ -35,6 +35,10 @@ def fetch_tweets(limit=6):
 
     print("Twitter status:", response.status_code)
     print("Twitter response:", response.text[:500])
+
+    # print("\n--- DEBUG ---")
+    # print("Status Code:", response.status_code)
+    # print("Full Response:", response.text)
     data = response.json()
 
     tweets = []
@@ -179,3 +183,13 @@ def fetch_all_twitter_content():
             data.extend(fetch_targeted_tweets(lang))
 
     return data
+
+
+# if __name__ == "__main__":
+#     tweets = fetch_all_twitter_content()
+    
+#     print("\n===== FINAL OUTPUT =====")
+#     print("Total tweets:", len(tweets))
+    
+#     for t in tweets[:3]:
+#         print(t)
