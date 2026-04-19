@@ -7,7 +7,7 @@ export default function NavigationCards() {
   const cards = [
   {
     title: "Moderation",
-    description: "Review and take action on flagged posts",
+    description: "Live Fetch, Review and take action on flagged posts",
     path: "/moderation",
     icon: "🛡",
   },

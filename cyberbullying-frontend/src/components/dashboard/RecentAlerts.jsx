@@ -33,10 +33,11 @@ export default function RecentAlerts() {
   return (
     <div className="alerts-section">
       <div className="section-header-flex">
-        <h2 className="section-title">Critical Alerts</h2>
-        <span className="view-all-link" onClick={() => navigate("/moderation")}>
+        <h2 className="section-title">Critical Test Alerts</h2>
+        {/* <span className="view-all-link" onClick={() => { console.log("🚨 DASHBOARD CLICK FIRED! Alert ID:", alert.id); 
+          navigate(`/moderation?alertId=${alert.id}`)}}>
            Showing latest 5
-        </span>
+        </span> */}
       </div>
 
       <div className="alerts-list">
@@ -46,10 +47,25 @@ export default function RecentAlerts() {
           </div>
         ) : (
           alerts.map((alert) => (
+            // <div
+            //   key={alert.id}
+            //   className={`alert-card ${alert.severity}`}
+            //   onClick={() => navigate("/moderation")}
+            // >
             <div
               key={alert.id}
               className={`alert-card ${alert.severity}`}
-              onClick={() => navigate("/moderation")}
+              // 👇 1. Force it to the front, and give it a visible magenta border
+              // style={{ position: "relative", zIndex: 9999, border: "2px solid magenta", cursor: "pointer" }}
+              
+              onClick={(e) => {
+                // 👇 2. Stop the click from bubbling up to any invisible parents
+                e.preventDefault();
+                e.stopPropagation();
+                
+                //console.log("🚨 NUKED CLICK FIRED! Alert ID:", alert.id);
+                navigate('/moderation', { state: { alertPost: alert } });
+              }}
             >
               <p className="alert-text">
                 {alert.text ? alert.text : "Content missing from record"}
