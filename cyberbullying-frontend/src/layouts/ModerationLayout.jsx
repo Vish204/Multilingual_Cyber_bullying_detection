@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
+
 import "./moderation.css";
 import FeedList from "../components/feed/FeedList";
 import PostDetails from "../components/post/PostDetails";
@@ -88,6 +90,29 @@ export default function ModerationLayout() {
   // const [alertedIds, setAlertedIds] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Start Stream");
+
+//For Dashboard Page alert navigation
+ const location = useLocation();
+
+  useEffect(() => {
+    // 👇 1. Check if the router handed us a full post object
+    if (location.state && location.state.alertPost) {
+      
+      const targetPost = location.state.alertPost;
+      console.log("🎯 ALERT INTERCEPTED FROM ROUTER:", targetPost);
+
+      // 👇 2. Instantly drop it into the UI (No API fetch needed!)
+      setFeed([targetPost]);
+      setSelectedPost(targetPost);
+      
+      // 👇 3. Turn off the live stream so it doesn't get buried
+      setIsLive(false); 
+      setLoadingText("Start Stream");
+      
+      // 👇 4. Clean up the router state so a refresh doesn't trigger it again
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state]);
 
 
 
@@ -349,10 +374,17 @@ const handleModeration = async (action, postId, reason = "") => {
     let newAction = postToUpdate.moderator_action;
     let newSaved = postToUpdate.saved;
 
+    // 🔥 1. Add the Overrule check here
+    const isOverruled = 
+      (postToUpdate.verdict === "BULLYING" && action === "ignore") || 
+      (postToUpdate.verdict === "NON-BULLYING" && (action === "delete" || action === "report"));
+
     if (action === "save") {
       newSaved = !postToUpdate.saved; // Toggle save state
     } else {
       newAction = action; // Ignore, Delete, or Report
+      // 🔥 2. Auto-save if they corrected the AI
+      if (isOverruled) newSaved = true; 
     }
 
     // 3. Send to MongoDB (Wait for it to finish)
@@ -388,9 +420,9 @@ const handleModeration = async (action, postId, reason = "") => {
 
     // Show Toast Message
     let message = "";
-    if (action === "ignore") message = "Post Ignored";
-    if (action === "report") message = "Post Reported";
-    if (action === "save") message = newSaved ? "Saved to Curated Dataset 🧠" : "Removed from Dataset";
+    if (action === "ignore") message = isOverruled ? "Ignored & Auto-Saved " : "Post Ignored";
+    if (action === "report") message = isOverruled ? "Reported & Auto-Saved " : "Post Reported";
+    if (action === "save") message = newSaved ? "Saved to Curated Dataset " : "Removed from Dataset";
 
     setActionMessage(message);
     setTimeout(() => setActionMessage(null), 2000);
@@ -571,7 +603,7 @@ const handleModeration = async (action, postId, reason = "") => {
 
 
       {/* 🔥 THE NEW SMART ALERT BANNER */}
-      {currentAlert && (
+      {/* {currentAlert && (
         <div 
           className="alert-banner" 
           onClick={() => setSelectedPost(currentAlert)}
@@ -594,6 +626,40 @@ const handleModeration = async (action, postId, reason = "") => {
             }}
           >
             Review Next ➔
+          </button>
+        </div>
+      )} */}
+      {/*  THE NEW SMART ALERT BANNER */}
+      {currentAlert && (
+        <div 
+          className="alert-banner" 
+          onClick={() => setSelectedPost(currentAlert)}
+        >
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", marginRight: "12px", letterSpacing: "1px", opacity: 0.9 }}>
+              HIGH PRIORITY
+            </span>
+            🚨 {currentAlert.platform} | {currentAlert.verdict} | {Math.round(currentAlert.confidence * 100)}%
+            <span className="alert-banner-count">
+              {pendingAlerts.length} Pending
+            </span>
+          </div>
+
+          <button 
+            className="alert-banner-btn"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevents the parent div click from firing
+              
+              if (pendingAlerts.length > 1) {
+                // If more left, select it so the user can review it
+                setSelectedPost(currentAlert);
+              } else {
+                // If it's the last one, dismiss the banner by un-flagging it in UI state
+                setFeed(feed.map(p => p.id === currentAlert.id ? { ...p, alert: false } : p));
+              }
+            }}
+          >
+            {pendingAlerts.length > 1 ? "Review Next ➔" : "✖ Close"}
           </button>
         </div>
       )}
