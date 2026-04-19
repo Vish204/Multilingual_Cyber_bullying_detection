@@ -1,0 +1,58 @@
+=======================================================================
+ALGORITHM: Hybrid Human-in-the-Loop Retraining Pipeline
+=======================================================================
+INPUT: 
+  - D_curated: New data points from MongoDB where `flags.saved == True`
+  - M_xgb: The current production XGBoost Meta-Classifier
+  - T_{1,2,3}: Frozen Teacher Models (mBERT, MuRIL, XLM-R)
+  - V_tfidf, V_ngram: Frozen text vectorizers (13,029 and 8,000 dimensions)
+
+OUTPUT: 
+  - M_xgb_updated: Fine-tuned XGBoost model weights
+
+
+BEGIN PIPELINE:
+
+  // Step 1: Data Extraction & Sanitization
+  Initialize empty feature matrix X_new, target vector Y_new
+  FOR EACH document d IN D_curated:
+      IF d.moderator_reason is NOT "spam" AND d.text is valid:
+          // Map human judgment to binary target
+          y_true = MapToBinary(d.human_corrected_label)  // {bullying: 1, safe: 0}
+          Y_new.append(y_true)
+              
+          // Extract raw text
+          raw_text = d.text
+  
+          // Step 2: Knowledge Distillation (Forward Pass)
+          // Get soft probabilities from frozen teachers
+          p_mbert = T_1.predict_proba(raw_text)
+          p_muril = T_2.predict_proba(raw_text)
+          p_xlmr  = T_3.predict_proba(raw_text)
+ 
+          // Step 3: Feature Engineering Matrix (N = 21,039)
+          // Transform text using frozen vocabulary mappings
+          vec_word = V_tfidf.transform(raw_text)    // Shape: (1, 13029)
+          vec_char = V_ngram.transform(raw_text)    // Shape: (1, 8000)
+          vec_num  = ExtractNumericStats(raw_text)  // Shape: (1, 10)
+ 
+          // Concatenate into final feature vector row
+          x_row = Concat(vec_word, vec_char, vec_num, p_mbert, p_muril, p_xlmr)
+          X_new.append(x_row)
+  END FOR
+
+  // Step 4: Incremental Model Updating (Warm-Start)
+  // Convert to optimized DMatrix format
+  D_train = XGBoost.DMatrix(data=X_new, label=Y_new)
+ 
+  // Load current model weights and incrementally update trees
+  M_xgb_updated = XGBoost.train(
+      params = M_xgb.get_params(),
+      dtrain = D_train,
+      xgb_model = M_xgb.weights,      // Initialize with existing knowledge
+      process_type = 'update'         // Modify existing trees, do not overwrite
+  )
+      
+  // Step 5: Versioning and Deployment
+  SaveModel(M_xgb_updated, path="/models/xgboost_v{next}.json")
+  AcknowledgeRetrainingComplete(D_curated.ids)
