@@ -85,7 +85,7 @@ export function transformPost(rawPost) {
     
     time: formatTime(post.timestamp || post.created_at || post.platform_time),
     severity: normalizeSeverity(pred.severity || post.severity || "none"),
-    language: langName !== "Unknown" ? capitalize(langName) : "Unknown",
+    language: langName !== "Unknown" ? normalizeLanguage(langName) : "Unknown",
 
     reviewed: post.flags?.reviewed ?? post.reviewed ?? false,
     alert: post.flags?.alert ?? post.alert ?? false,
@@ -94,7 +94,9 @@ export function transformPost(rawPost) {
 
     verdict: normalizeSeverity(pred.severity || post.severity) === "none" ? "NON-BULLYING" : "BULLYING",
     confidence: (pred.confidence || post.confidence || 0) / 100,
-    base_score: (components.base_cyberbullying || 0) / 100,
+    // base_score: (components.base_cyberbullying || 0) / 100,
+    // 🔥 FIX: Check for both DB format AND Live API format
+    base_score: (components.base_cyberbullying || components.cyberbullying || 0) / 100,
 
     summary: explanation.summary || "No explanation available.",
     trigger_words: triggerWords,
@@ -110,24 +112,21 @@ export function transformPost(rawPost) {
 
 //  FIX 3: Bulletproof Date Formatter
 // 🔥 Cleaned up Date Formatter for ISO Standards
-const formatTime = (timestamp) => {
-  if (!timestamp) return "Just now";
+const formatTime = (timeString) => {
+  if (!timeString) return "Unknown Time";
   
   try {
-    const parsedDate = new Date(timestamp); // Natively parses the ISO string from Python
+    const date = new Date(timeString); // Natively parses the ISO string from Python
     
-    if (isNaN(parsedDate.getTime())) return "Recent";
+    if (isNaN(date.getTime())) return "Unknown Time";
 
-    // Calculate relative time (e.g. "5m ago")
-    const diff = Math.floor((new Date() - parsedDate) / 1000);
-    if (diff < 60) return `${Math.max(0, diff)}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    // Force Indian Standard Time for the exact date/time output
+    const optionsDate = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' };
+    const optionsTime = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' };
     
-    // If older than 24 hours, show date
-    return parsedDate.toLocaleDateString();
+    return `${date.toLocaleDateString('en-US', optionsDate)} - ${date.toLocaleTimeString('en-US', optionsTime)}`;
   } catch (e) {
-    return "Recent";
+    return "Unknown Time";
   }
 };
 
@@ -168,4 +167,18 @@ const getTopEmotion = (emotions) => {
 const getTopEmotionScore = (emotions) => {
   if (!emotions || emotions.length === 0) return 0;
   return emotions[0].score / 100;
+};
+
+const normalizeLanguage = (langName) => {
+  if (!langName) return "Unknown";
+  
+  const lower = langName.toLowerCase();
+  
+  // The Map of Ugly DB Strings -> Beautiful UI Strings
+  if (lower.includes("hinglish") || lower.includes("roman")) return "Hinglish";
+  if (lower.includes("hindi_or_marathi")) return "Hindi / Marathi";
+  if (lower === "en" || lower === "english") return "English";
+  
+  // Fallback: Just capitalize it normally if it's not in the list
+  return capitalize(langName);
 };
