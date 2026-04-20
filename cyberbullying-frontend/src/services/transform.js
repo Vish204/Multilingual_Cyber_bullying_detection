@@ -96,7 +96,7 @@ export function transformPost(rawPost) {
     confidence: (pred.confidence || post.confidence || 0) / 100,
     // base_score: (components.base_cyberbullying || 0) / 100,
     // 🔥 FIX: Check for both DB format AND Live API format
-    base_score: (components.base_cyberbullying || components.cyberbullying || 0) / 100,
+    base_score: Math.max(0.01, (components.base_cyberbullying || components.cyberbullying || 0) / 100),
 
     summary: explanation.summary || "No explanation available.",
     trigger_words: triggerWords,

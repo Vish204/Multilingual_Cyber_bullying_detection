@@ -42,7 +42,7 @@ export default function ContextPanel() {
           <li>Mild → Casual / low harm</li>
           <li>Moderate → Repeated negativity</li>
           <li>Severe → Direct harmful intent</li>
-          <li>Critical → Immediate intervention needed</li>
+          <li>Alert → Immediate intervention needed</li>
         </ul>
       </div>
 

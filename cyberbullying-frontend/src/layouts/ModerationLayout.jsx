@@ -138,6 +138,11 @@ export default function ModerationLayout() {
   //   }
   // };
   const handleStreamToggle = () => {
+    if (!isLive) {
+      console.log("🧹 STREAM STARTING: Aggressively nuking old UI...");
+      setSelectedPost(null);  // Instantly kill middle panel
+      setFeed([]);            // Instantly kill left panel & alert banner
+    }
     setIsLive(prev => !prev);
   };
 
@@ -526,11 +531,18 @@ const handleModeration = async (action, postId, reason = "") => {
 
         async function runStream() {
           try {
+            console.log(" 1. runStream started");
             setIsLoading(true);
-            console.log("🚀 Collecting 15 posts...");
 
-            // 🔥 NEW: Dynamic Loading Sequence!
-            setLoadingText("📡 Connecting to Social APIs...");
+            //  P15: Instantly wipe the old UI (Middle Panel & Alert Banner)
+            setSelectedPost(null);
+            setFeed([]);
+
+
+            console.log(" Collecting 15 posts...");
+
+            //  NEW: Dynamic Loading Sequence!
+            setLoadingText(" Connecting to Social APIs...");
             const timer1 = setTimeout(() => { if (isMounted) setLoadingText("⚙️ Running XLM-R Pipeline..."); }, 3000);
             const timer2 = setTimeout(() => { if (isMounted) setLoadingText("⚡ Processing Multilingual Content..."); }, 7000);
 
