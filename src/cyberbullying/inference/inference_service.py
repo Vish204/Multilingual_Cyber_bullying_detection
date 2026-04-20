@@ -4,7 +4,36 @@ from cyberbullying.phase3_inference.fusion_inference import compute_hybrid_fusio
 
 import unicodedata
 import re
+import os
+import json
 from langdetect import detect
+
+
+# ---------------------------------------------------------
+# 🔥 LOAD LANGUAGE LEXICON GLOBALLY (Fast O(1) Memory Lookups)
+# ---------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LEXICON_PATH = os.path.join(BASE_DIR, "lang_lexicon.json")
+
+try:
+    with open(LEXICON_PATH, "r", encoding="utf-8") as f:
+        LEXICON_DATA = json.load(f)
+except FileNotFoundError:
+    print("⚠️ Warning: lang_lexicon.json not found! Heuristics may be limited.")
+    LEXICON_DATA = {}
+
+# Build English anchors
+ENG_ANCHORS = set(LEXICON_DATA.get("english", []))
+
+# 🔥 THE SMART EXTRACTOR: Dynamically maps romanized words to their exact language
+ROMANIZED_ANCHORS = {}
+for lang, words in LEXICON_DATA.items():
+    if lang != "english":
+        for w in words:
+            if w.isascii():  # If it uses English letters, it's a romanized word
+                ROMANIZED_ANCHORS[w] = lang
+# ---------------------------------------------------------
+
 
 # ------------------------------------------------
 # Load models ONCE
@@ -48,20 +77,47 @@ def detect_language(text: str):
         if len(words) == 0:
             return {"code": "unknown", "name": "unknown"}
 
-        # 3. THE ROMANIZED / HINGLISH FIX
-        if text.isascii():
-            for w in words:
-                # Fix 1: Safer dictionary access
-                detected_lang = KEYWORD_LANG_MAP.get(w)
-                if detected_lang:
-                    if detected_lang.lower() == "english":
-                        return {"code": "en", "name": "english"}
-                    else:
-                        # Fix 2: Clean, DB-friendly strings
-                        return {"code": "mix", "name": f"{detected_lang.lower()}_romanized"}
+        # 3. THE ROMANIZED / HINGLISH FIX (problem was detecting everything as English due to checking only the first word)
+        # if text.isascii():
+        #     for w in words:
+        #         # Fix 1: Safer dictionary access
+        #         detected_lang = KEYWORD_LANG_MAP.get(w)
+        #         if detected_lang:
+        #             if detected_lang.lower() == "english":
+        #                 return {"code": "en", "name": "english"}
+        #             else:
+        #                 # Fix 2: Clean, DB-friendly strings
+        #                 return {"code": "mix", "name": f"{detected_lang.lower()}_romanized"}
             
-            # If no regional words found, default to English
+        #     # If no regional words found, default to English
+        #     return {"code": "en", "name": "english"}
+
+
+        # 3. THE ROMANIZED / HINGLISH FIX (Signal Counting)
+        # 3. THE ROMANIZED / HINGLISH FIX (Smart Dictionary Mapping)
+        if text.isascii():
+            regional_match = None
+
+            for w in words:
+                # 1. Check custom toxic dictionary FIRST (Highest Priority)
+                detected_lang = KEYWORD_LANG_MAP.get(w)
+                if detected_lang and detected_lang.lower() != "english":
+                    regional_match = detected_lang.lower()
+                    break # We found a toxic regional word, stop looking!
+                    
+                # 2. Check neutral romanized stopwords (e.g., 'ami' -> 'bengali')
+                if not regional_match and w in ROMANIZED_ANCHORS:
+                    regional_match = ROMANIZED_ANCHORS[w]
+
+            # RULE 1: If we found ANY regional words (toxic or neutral)
+            if regional_match:
+                # Return standard language name, but flag code as 'mix' so the model knows it's romanized
+                return {"code": "mix", "name": f"{regional_match}_romanized"}
+            
+            # RULE 2: No regional words found. Safe to default to English.
             return {"code": "en", "name": "english"}
+
+
 
         # 4. THE UNICODE CHECK (For Native Scripts)
         # Note: We use 'return' to act as an instant 'break' when a script is found.
