@@ -81,26 +81,30 @@ def predict(request: TextRequest):
         start_time = time.time()
 
         # 🔥 1. REGEX PREPROCESSING: Strip @mentions and URLs instantly
-        clean_text = re.sub(r'http\S+|www\.\S+|@\w+', '', request.text).strip()
+        clean_text = re.sub(r'http\S+|www\.\S+|@\w+', '', request.text).strip().lower()
+
+        # 🔥 P20 FIX: Strip out giant standalone numbers/scientific notation
+        # This replaces any number sequence with a blank space so the AI ignores it.
+        clean_text = re.sub(r'\b\d+([.,]\d+)?([eE][+-]?\d+)?\b', '', clean_text).strip()
 
         print(f"🧹 Naked Text sent to AI: '{clean_text}'")
 
         # 🔥 2. SHORT TEXT FILTER: Kill noise like "BJP" or "By" (Improves accuracy!)
-        if len(clean_text.split()) <= 2:
-             model_time_ms = round((time.time() - start_time) * 1000, 2)
-             # Return a safe dummy response to skip the heavy ML math entirely
-             return {
-                 "label": "non-cyberbullying",
-                 "severity": "none",
-                 "confidence": 0,
-                 "sarcasm": 0,
-                 "language": {"code": "en", "name": "english"},
-                 "latency": {"model_ms": model_time_ms, "shap_ms": 0, "total_ms": model_time_ms},
-                 "explanation": {
-                     "summary": "Text too short for targeted cyberbullying analysis.",
-                     "trigger_words": []
-                 }
-             }
+        # if len(clean_text.split()) <= 2:
+        #      model_time_ms = round((time.time() - start_time) * 1000, 2)
+        #      # Return a safe dummy response to skip the heavy ML math entirely
+        #      return {
+        #          "label": "non-cyberbullying",
+        #          "severity": "none",
+        #          "confidence": 0,
+        #          "sarcasm": 0,
+        #          "language": {"code": "en", "name": "english"},
+        #          "latency": {"model_ms": model_time_ms, "shap_ms": 0, "total_ms": model_time_ms},
+        #          "explanation": {
+        #              "summary": "Text too short for targeted cyberbullying analysis.",
+        #              "trigger_words": []
+        #          }
+        #      }
 
         # 🔹 Step 1: Prediction
         result = predict_post(clean_text)
