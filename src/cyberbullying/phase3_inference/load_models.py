@@ -132,7 +132,7 @@ def load_all_models():
     print("All models loaded successfully!")
 
     total_duration = (time.time() - total_start) * 1000
-    print(f"\n✅ Total models loaded in {total_duration:.2f} ms\n")
+    print(f"\n Total models loaded in {total_duration:.2f} ms\n")
 
     return {
 

@@ -43,15 +43,63 @@ def load_keywords():
                                 
                                 KEYWORD_LANG_MAP[k] = lang_name
                 except Exception as e:
-                    print(f"⚠️ Warning: Could not load {file}: {e}")
+                    print(f" Warning: Could not load {file}: {e}")
     else:
-        print(f"⚠️ CRITICAL: Keywords directory not found at {KEYWORDS_DIR}")
+        print(f" CRITICAL: Keywords directory not found at {KEYWORDS_DIR}")
 
     end_time = time.time()
     elapsed_ms = (end_time - start_time) * 1000
     total_loaded = len(SINGLE_WORDS) + len(PHRASES)
     
-    print(f"✅ Fusion Keywords Loaded: {total_loaded} total ({len(SINGLE_WORDS)} words, {len(PHRASES)} phrases) in {elapsed_ms:.2f} ms")
+    print(f" Fusion Keywords Loaded: {total_loaded} total ({len(SINGLE_WORDS)} words, {len(PHRASES)} phrases) in {elapsed_ms:.2f} ms")
+
+#  To check what keywords language its loading 
+    # print("\n" + "="*40)
+    # print(" KEYWORD BREAKDOWN BY LANGUAGE")
+    # print("="*40)
+    
+    # # 1. Count how many words belong to each language
+    # lang_counts = {}
+    # for word, lang in KEYWORD_LANG_MAP.items():
+    #     lang_counts[lang] = lang_counts.get(lang, 0) + 1
+        
+    # for lang, count in lang_counts.items():
+    #     print(f" - {lang}: {count} keywords")
+        
+    # print("="*40 + "\n")
+
+
+
+
+
+    #   View Samples 
+    # print("\n" + "="*50)
+    # print(" KEYWORD SAMPLES BY TARGET LANGUAGE")
+    # print("="*50)
+    
+
+#Check keywords and its lang
+    # 1. Group words by language
+    # lang_words = {}
+    # for word, lang in KEYWORD_LANG_MAP.items():
+    #     if lang not in lang_words:
+    #         lang_words[lang] = []
+    #     lang_words[lang].append(word)
+        
+    # # 2. The specific languages you want to check
+    # target_langs = ["Keywords_kannada", "Keywords_telugu", "Keywords_tamil", "Keywords_marathi", "Keywords_oriya"]
+    
+    # for lang in target_langs:
+    #     if lang in lang_words:
+    #         # Grab the first 10 words
+    #         sample = lang_words[lang][:10] 
+    #         count = len(lang_words[lang])
+    #         print(f" - {lang} ({count} total):")
+    #         print(f"   Samples: {', '.join(sample)}\n")
+    #     else:
+    #         print(f" - {lang}: Not found in map!\n")
+            
+    # print("="*50 + "\n")
 
 #  load once
 load_keywords()
@@ -72,7 +120,7 @@ load_keywords()
 
 #     #fusion_score = max(0.0, min(1.0, fusion_score))
 
-#     # 🔥 Context boost (NO retraining, NO keywords)
+#     #  Context boost (NO retraining, NO keywords)
 #     if p_cb < 0.3 and p_emotion > 0.7 and p_sarcasm < 0.4:
 #         fusion_score += 0.15
 
@@ -147,13 +195,6 @@ def compute_hybrid_fusion_score(p_cb, p_sarcasm, p_aggression, p_distress, p_neu
 
     # Base weighted fusion
     # fusion_score = 0.5 * p_cb + 0.3 * p_sarcasm + 0.2 * (p_aggression + p_distress)
-
-
-
-
-
-
-
 
     fusion_score = (0.70 * p_cb) + (0.30 * max(p_aggression, p_distress))
 
