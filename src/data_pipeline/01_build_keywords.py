@@ -10,10 +10,11 @@ import json
 import time
 import concurrent.futures
 from datetime import datetime
+from pathlib import Path
 from deep_translator import GoogleTranslator
 
 # Add src to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 def setup_simple_logger():
     """Simple logger for the build process"""
@@ -65,9 +66,15 @@ class RealTranslator:
             'sanskrit': 'sa'
         }
         
+        # 🔹 NEW SEM8 PATH LOGIC 🔹
+        # Traces back to Sem8_Cyber_bullying_detection/resources/keywords/
+        self.PROJECT_ROOT = Path(__file__).resolve().parents[2]
+        self.KEYWORDS_DIR = self.PROJECT_ROOT / "resources" / "keywords"
+        self.KEYWORDS_DIR.mkdir(parents=True, exist_ok=True)
+        
         self.translation_cache = {}
         self.failed_translations = []
-        self.checkpoint_file = 'config/translation_checkpoint.json'
+        self.checkpoint_file = self.KEYWORDS_DIR / 'translation_checkpoint.json'
         self.resume_from_checkpoint = False
         self.checkpoint_data = {}
         
@@ -79,7 +86,7 @@ class RealTranslator:
     def load_checkpoint(self):
         """Load checkpoint data if exists"""
         try:
-            if os.path.exists(self.checkpoint_file):
+            if self.checkpoint_file.exists():
                 with open(self.checkpoint_file, 'r', encoding='utf-8') as f:
                     self.checkpoint_data = json.load(f)
                 self.logger.success(f"📌 Checkpoint found! Resuming from word #{self.checkpoint_data.get('last_processed_word', 0)}")
@@ -114,16 +121,16 @@ class RealTranslator:
     def cleanup_checkpoint(self):
         """Remove checkpoint files after successful completion"""
         try:
-            if os.path.exists(self.checkpoint_file):
-                os.remove(self.checkpoint_file)
+            if self.checkpoint_file.exists():
+                self.checkpoint_file.unlink()
             self.logger.info("🧹 Checkpoint files cleaned up")
         except Exception as e:
             self.logger.warning(f"Could not clean up checkpoint files: {e}")
     
     def load_partial_database(self):
         """Load partial database from checkpoint"""
-        partial_db_file = 'config/partial_multilingual_database.json'
-        if os.path.exists(partial_db_file):
+        partial_db_file = self.KEYWORDS_DIR / 'partial_multilingual_database.json'
+        if partial_db_file.exists():
             try:
                 with open(partial_db_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
@@ -134,7 +141,7 @@ class RealTranslator:
     def save_partial_database(self, multilingual_db):
         """Save partial database for resume"""
         try:
-            partial_db_file = 'config/partial_multilingual_database.json'
+            partial_db_file = self.KEYWORDS_DIR / 'partial_multilingual_database.json'
             with open(partial_db_file, 'w', encoding='utf-8') as f:
                 json.dump(multilingual_db, f, ensure_ascii=False, indent=2)
             return True
@@ -160,7 +167,8 @@ class RealTranslator:
     def load_english_database(self):
         """Load the massive English keyword database"""
         try:
-            with open('config/english_keyword_base.json', 'r', encoding='utf-8') as f:
+            english_db_file = self.KEYWORDS_DIR / 'english_keyword_base.json'
+            with open(english_db_file, 'r', encoding='utf-8') as f:
                 english_db = json.load(f)
                 
             # Count total words
@@ -173,8 +181,8 @@ class RealTranslator:
             return english_db
             
         except FileNotFoundError:
-            self.logger.error("English keyword database not found at config/english_keyword_base.json")
-            self.logger.info("Please create the file with your 15,000+ words")
+            self.logger.error(f"English keyword database not found at {self.KEYWORDS_DIR / 'english_keyword_base.json'}")
+            self.logger.info("Please ensure the file with your 15,000+ words is in the resources/keywords/ folder")
             return None
         except json.JSONDecodeError as e:
             self.logger.error(f"Invalid JSON in English database: {e}")
@@ -201,7 +209,6 @@ class RealTranslator:
                     categories_data[subcategory] = []
                 
                 for word in words:
-                    # For English, native and roman are the same as English word
                     entry = {
                         'english': word,
                         'native': word,
@@ -343,14 +350,12 @@ class RealTranslator:
         
         # Process translations in parallel
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Prepare all translation tasks
             future_to_translation = {}
             for word in english_words:
                 for lang_name in target_langs:
                     future = executor.submit(translate_single_word, word, lang_name)
                     future_to_translation[future] = (word, lang_name)
             
-            # Collect results as they complete
             for future in concurrent.futures.as_completed(future_to_translation):
                 word, lang_name = future_to_translation[future]
                 try:
@@ -447,7 +452,7 @@ class RealTranslator:
                         continue
                     resume_found = True
                 
-                self.logger.info(f"   📋 Subcategory: {subcategory} ({len(english_words)} words)")
+                self.logger.info(f"    📋 Subcategory: {subcategory} ({len(english_words)} words)")
                 
                 # Process words in batches for better performance
                 words_to_process = english_words[resume_word_index:] if not resume_found else english_words
@@ -464,9 +469,7 @@ class RealTranslator:
                     batch_results = self.translate_batch_parallel(batch_words, target_languages)
                     
                     # Process batch results
-                    batch_success_count = 0
                     for english_word in batch_words:
-                        word_success_count = 0
                         
                         for lang_name in target_languages:
                             if lang_name in batch_results and english_word in batch_results[lang_name]:
@@ -489,8 +492,6 @@ class RealTranslator:
                                 multilingual_db['languages'][lang_name]['keywords'].append(translation_result['roman'])
                                 
                                 if translation_result['success']:
-                                    word_success_count += 1
-                                    batch_success_count += 1
                                     successful_translations += 1
                         
                         total_words_processed += 1
@@ -501,9 +502,9 @@ class RealTranslator:
                     
                     elapsed = time.time() - start_time
                     words_per_second = total_words_processed / elapsed if elapsed > 0 else 0
-                    success_rate = (successful_translations / (total_words_processed * len(target_languages))) * 100
+                    success_rate = (successful_translations / (total_words_processed * len(target_languages))) * 100 if total_words_processed > 0 else 0
                     
-                    self.logger.info(f"   📊 Progress: {total_words_processed} words "
+                    self.logger.info(f"    📊 Progress: {total_words_processed} words "
                                    f"| Success: {success_rate:.1f}% "
                                    f"| Speed: {words_per_second:.2f} words/sec")
         
@@ -532,20 +533,20 @@ class RealTranslator:
                     if total_translations > 0:
                         multilingual_db['languages'][lang_name]['translation_success_rate'] = (successful_for_lang / total_translations) * 100
                 else:
-                    # English and Hinglish have 100% success rate
                     multilingual_db['languages'][lang_name]['translation_success_rate'] = 100.0
         
         multilingual_db['metadata']['total_english_words'] = total_words_processed
         multilingual_db['metadata']['total_translations'] = total_words_processed * len(target_languages)
         multilingual_db['metadata']['successful_translations'] = successful_translations
-        multilingual_db['metadata']['overall_success_rate'] = (successful_translations / (total_words_processed * len(target_languages))) * 100
+        multilingual_db['metadata']['overall_success_rate'] = (successful_translations / (total_words_processed * len(target_languages))) * 100 if total_words_processed > 0 else 0
         multilingual_db['metadata']['build_duration_seconds'] = time.time() - start_time
         multilingual_db['metadata']['failed_translations'] = self.failed_translations
         
         # Clean up checkpoint after successful completion
         self.cleanup_checkpoint()
-        if os.path.exists('config/partial_multilingual_database.json'):
-            os.remove('config/partial_multilingual_database.json')
+        partial_file = self.KEYWORDS_DIR / 'partial_multilingual_database.json'
+        if partial_file.exists():
+            partial_file.unlink()
         
         return multilingual_db
     
@@ -553,17 +554,18 @@ class RealTranslator:
         """Save the multilingual database to files"""
         try:
             # Create multilingual directory
-            os.makedirs('config/multilingual_keywords', exist_ok=True)
+            multi_dir = self.KEYWORDS_DIR / 'multilingual_keywords'
+            multi_dir.mkdir(exist_ok=True)
             
             # Save complete database
-            complete_filename = 'config/complete_multilingual_database.json'
+            complete_filename = self.KEYWORDS_DIR / 'complete_multilingual_database.json'
             with open(complete_filename, 'w', encoding='utf-8') as f:
                 json.dump(database, f, ensure_ascii=False, indent=2)
             self.logger.success(f"Complete database saved to: {complete_filename}")
             
             # Save individual language files
             for lang_name, lang_data in database['languages'].items():
-                lang_filename = f'config/multilingual_keywords/keywords_{lang_name}.json'
+                lang_filename = multi_dir / f'keywords_{lang_name}.json'
                 
                 lang_file_data = {
                     'language': lang_name,
@@ -584,14 +586,14 @@ class RealTranslator:
             for lang_name, lang_data in database['languages'].items():
                 consolidated[lang_name] = lang_data['keywords'][:100]
             
-            consolidated_filename = 'config/consolidated_keywords.json'
+            consolidated_filename = self.KEYWORDS_DIR / 'consolidated_keywords.json'
             with open(consolidated_filename, 'w', encoding='utf-8') as f:
                 json.dump(consolidated, f, ensure_ascii=False, indent=2)
             self.logger.success(f"Consolidated keywords saved to: {consolidated_filename}")
             
             # Save failed translations for review
             if self.failed_translations:
-                failed_filename = 'config/failed_translations.json'
+                failed_filename = self.KEYWORDS_DIR / 'failed_translations.json'
                 with open(failed_filename, 'w', encoding='utf-8') as f:
                     json.dump(self.failed_translations, f, ensure_ascii=False, indent=2)
                 self.logger.warning(f"Failed translations saved to: {failed_filename}")
@@ -629,10 +631,10 @@ class RealTranslator:
             self.logger.info("🔄 RESUMED FROM CHECKPOINT: Yes")
         self.logger.info("=" * 60)
         
-        self.logger.info("💾 FILES CREATED:")
-        self.logger.info("   📄 config/complete_multilingual_database.json")
-        self.logger.info("   📁 config/multilingual_keywords/ (14 language files)")
-        self.logger.info("   📄 config/consolidated_keywords.json")
+        self.logger.info("💾 FILES CREATED IN resources/keywords/:")
+        self.logger.info("   📄 complete_multilingual_database.json")
+        self.logger.info("   📁 multilingual_keywords/ (14 language files)")
+        self.logger.info("   📄 consolidated_keywords.json")
         self.logger.info("=" * 60)
         self.logger.success("🚀 Ready for REAL Phase 1 Data Collection!")
 

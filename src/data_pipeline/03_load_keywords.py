@@ -1,4 +1,4 @@
-# load_keywords_corrected.py
+# src/data_pipeline/03_load_keywords.py
 import json
 from pathlib import Path
 import re
@@ -9,14 +9,16 @@ logger = logging.getLogger(__name__)
 
 def load_keywords_from_complete_db():
     """Load ALL keywords from complete database (1300+ per language)"""
-    db_file = Path("config/complete_multilingual_database.json")
+    # 🔹 SEM8 PATH UPDATE 🔹
+    project_root = Path(__file__).resolve().parents[2]
+    db_file = project_root / "resources" / "keywords" / "complete_multilingual_database.json"
     
     if not db_file.exists():
         logger.error(f"Complete database not found: {db_file}")
         return {}
     
     try:
-        with open(db_file, 'r') as f:
+        with open(db_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         all_keywords = {}
@@ -43,14 +45,20 @@ def load_keywords_from_complete_db():
 
 def load_keywords_from_individual_files():
     """Load keywords from individual files (200 per language)"""
-    keywords_dir = Path("config/multilingual_keywords")
+    # 🔹 SEM8 PATH UPDATE 🔹
+    project_root = Path(__file__).resolve().parents[2]
+    keywords_dir = project_root / "resources" / "keywords" / "multilingual_keywords"
     all_keywords = {}
     
+    if not keywords_dir.exists():
+        logger.warning(f"Individual keywords directory not found: {keywords_dir}")
+        return all_keywords
+
     for keyword_file in keywords_dir.glob("keywords_*.json"):
         lang = keyword_file.stem.replace("keywords_", "")
         
         try:
-            with open(keyword_file, 'r') as f:
+            with open(keyword_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             # Extract keywords from the 'keywords' key
@@ -97,7 +105,7 @@ def create_labeling_patterns(keywords_dict, max_keywords=200):
 
 def main():
     logger.info("=" * 60)
-    logger.info("LOADING KEYWORDS - CORRECTED VERSION")
+    logger.info("LOADING KEYWORDS - SEM8 PIPELINE")
     logger.info("=" * 60)
     
     # Try to load from complete database first

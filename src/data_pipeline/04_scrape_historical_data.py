@@ -1,28 +1,53 @@
-#02_scrape_social_media.py
+#!/usr/bin/env python3
+# src/data_pipeline/04_scrape_historical_data.py
 
 import sys
 import os
 import json
 import math
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
 
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-from data_collection import twitter_collector, reddit_collector, youtube_collector
-from config import API_KEYS, TARGET_LANGUAGES
+# 🔹 SEM8 PATH & ENV SETUP 🔹
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
+
+# Add 'src' to Python path so we can import the legacy collectors
+sys.path.append(str(PROJECT_ROOT / "src"))
+
+from cyberbullying.data_collection import twitter_collector, reddit_collector, youtube_collector
+from pipeline_config import TARGET_LANGUAGES, BATCH_SIZE
+
+# Safely build the API_KEYS dictionary from the .env file
+API_KEYS = {
+    "twitter": {
+        "bearer_token": os.getenv("TWITTER_BEARER_TOKEN")
+    },
+    "youtube": {
+        "api_key": os.getenv("YOUTUBE_API_KEY")
+    },
+    "reddit": {
+        "client_id": os.getenv("REDDIT_CLIENT_ID"),
+        "client_secret": os.getenv("REDDIT_CLIENT_SECRET"),
+        "user_agent": os.getenv("REDDIT_USER_AGENT", "cyberbullying_research_v1.0")
+    }
+}
 
 TARGET_PLATFORMS = {
     'reddit': reddit_collector,
-     'youtube': youtube_collector,
-      'twitter':twitter_collector
-    
-    
+    'youtube': youtube_collector,
+    'twitter': twitter_collector
 }
-PROGRESS_FILE = 'collection_progress.json'
-BATCH_SIZE = 10 # Process 10 keywords at a time
+
+# Keep progress file in data/raw to avoid cluttering the src folder
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+RAW_DIR.mkdir(parents=True, exist_ok=True)
+PROGRESS_FILE = RAW_DIR / "collection_progress.json"
 
 def load_progress():
     """Loads the progress file."""
-    if os.path.exists(PROGRESS_FILE):
+    if PROGRESS_FILE.exists():
         with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {}
@@ -50,11 +75,12 @@ def main():
         max_batches = 0
         work_queue = {}
         try:
-            keyword_file = os.path.join('config', 'consolidated_keywords.json')
+            keyword_file = PROJECT_ROOT / "resources" / "keywords" / "consolidated_keywords.json"
             with open(keyword_file, 'r', encoding='utf-8') as f:
                 all_keyword_data = json.load(f)
         except FileNotFoundError:
-            print(f"❌ Consolidated keyword file not found. Skipping platform."); break
+            print(f"❌ Consolidated keyword file not found at {keyword_file}. Skipping platform.")
+            break
             
         for language in TARGET_LANGUAGES:
             if language not in progress[platform_name]:
@@ -92,6 +118,8 @@ def main():
                 print(f"   ↳ Processing {language.title()}...")
                 
                 try:
+                    # Note: Legacy collectors execute assuming they are run from the project root.
+                    # They will save output to 'data/raw/[platform]/[language]/data.csv'
                     collector_module.collect(language, batch_to_process, API_KEYS)
                     
                     # Update and save progress for this specific batch

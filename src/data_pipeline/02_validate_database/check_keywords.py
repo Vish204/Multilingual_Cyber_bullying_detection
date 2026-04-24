@@ -1,4 +1,4 @@
-# check_keywords.py - Save in project root
+# src/data_pipeline/02_validate_database/check_keywords.py
 import json
 from pathlib import Path
 import pandas as pd
@@ -7,14 +7,17 @@ print("=" * 60)
 print("KEYWORD DATABASE DIAGNOSTIC")
 print("=" * 60)
 
-# Check config directory
-config_dir = Path("config")
-print(f"\n1. Config directory exists: {config_dir.exists()}")
+# 🔹 SEM8 PATH UPDATE 🔹
+project_root = Path(__file__).resolve().parents[3]
+config_dir = project_root / "resources" / "keywords"
+keywords_dir = config_dir / "multilingual_keywords"
+complete_db = config_dir / "complete_multilingual_database.json"
+data_dir = project_root / "data"
+
+print(f"\n1. Keywords directory exists: {config_dir.exists()}")
 if config_dir.exists():
     print(f"   Contents: {[f.name for f in config_dir.iterdir() if f.is_file()]}")
 
-# Check multilingual_keywords
-keywords_dir = config_dir / "multilingual_keywords"
 print(f"\n2. Multilingual keywords directory exists: {keywords_dir.exists()}")
 
 if keywords_dir.exists():
@@ -23,19 +26,17 @@ if keywords_dir.exists():
     
     for keyword_file in keyword_files:
         try:
-            with open(keyword_file, 'r') as f:
+            with open(keyword_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             print(f"   {keyword_file.name}: {len(data) if isinstance(data, list) else 'dict'}")
         except Exception as e:
             print(f"   {keyword_file.name}: ERROR - {e}")
 
-# Check complete database
-complete_db = config_dir / "complete_multilingual_database.json"
 print(f"\n3. Complete database exists: {complete_db.exists()}")
 
 if complete_db.exists():
     try:
-        with open(complete_db, 'r') as f:
+        with open(complete_db, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         print(f"   File size: {complete_db.stat().st_size / 1024:.1f} KB")
@@ -57,20 +58,17 @@ if complete_db.exists():
                     print(f"     {category}: {type(items)}")
         
         else:
-            print("   ERROR: 'complete_cyberbullying_database' key not found!")
+            print("   ERROR: 'complete_cyberbullying_database' key not found! Check structure.")
             print(f"   Available keys: {list(data.keys())}")
             
     except Exception as e:
         print(f"   ERROR reading file: {e}")
 
-# Check data structure
 print(f"\n4. Checking data directory:")
-data_dir = Path("data")
 if data_dir.exists():
     print(f"   data/ exists")
     print(f"   Contents: {[f.name for f in data_dir.iterdir()]}")
 
 print("\n" + "=" * 60)
-print("RUN THIS SCRIPT:")
+print("DIAGNOSTIC COMPLETE")
 print("=" * 60)
-print("python3 check_keywords.py")
