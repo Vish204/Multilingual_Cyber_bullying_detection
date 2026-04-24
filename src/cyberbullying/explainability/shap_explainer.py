@@ -45,11 +45,11 @@ if KEYWORDS_DIR.exists():
                             if len(kw_str) > 2 and " " not in kw_str:
                                 ALL_KEYWORDS.add(kw_str)
             except Exception as e:
-                print(f"⚠️ Warning: Could not load {file}: {e}")
+                print(f" Warning: Could not load {file}: {e}")
 else:
-    print(f"⚠️ CRITICAL: Keywords directory not found at {KEYWORDS_DIR}")
+    print(f" CRITICAL: Keywords directory not found at {KEYWORDS_DIR}")
 
-print(f"✅ Loaded {len(ALL_STOPWORDS)} Stopwords and {len(ALL_KEYWORDS)} Toxic Keywords into memory.")
+print(f" Loaded {len(ALL_STOPWORDS)} Stopwords and {len(ALL_KEYWORDS)} Toxic Keywords into memory.")
 
 
 # ---------------------------------------------------------
