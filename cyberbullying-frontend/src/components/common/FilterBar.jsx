@@ -48,17 +48,12 @@ export default function FilterBar({ filters, setFilters }) {
           <option value="mild">Mild</option>
         </select>
 
-        <select value={filters.language ?? "all"} onChange={(e) => setFilters({ ...filters, language: e.target.value })}>
+        <select value={filters.language ?? "all"} onChange={(e) => {console.log("🔥 1. DROPDOWN CLICKED. Value sent to state:", e.target.value);
+          setFilters({ ...filters, language: e.target.value })}}>
           <option value="all">All Languages</option>
           <option value="English">English</option>
-          {/* <option value="Hindi_or_marathi">Hindi/Marathi</option>
-          <option value="Keywords_hinglish_romanized">Hinglish</option> */}
-          
-          {/* 🔥 FIXED: Removed "Keywords_" to match the DB exactly */}
-          <option value="hinglish_romanized">Hinglish</option>
-          {/* 🔥 FIXED: Made lowercase to match the DB exactly */}
-          <option value="hindi_or_marathi">Hindi / Marathi</option>
-
+          <option value="Hindi / Marathi">Hindi/Marathi</option>
+          <option value="Hinglish">Hinglish</option>
           <option value="Bengali">Bengali</option>
           {/* <option value="Marathi">Marathi</option> */}
           <option value="Telugu">Telugu</option>

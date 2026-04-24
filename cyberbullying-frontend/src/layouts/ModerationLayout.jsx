@@ -163,6 +163,12 @@ export default function ModerationLayout() {
     content_type: null,
   });
 
+  // 🔥 2. DEBUG LOGGING: Print the active filter and a sample from the DB
+  console.log("🧐 2. ACTIVE FILTER IS:", filters.language);
+  if (feed.length > 0) {
+    console.log("🧐 3. DB SAMPLE (Post 1 language):", feed[0].language);
+  }
+
   // ✅ Filtering AFTER feed is defined
   const filteredFeed = feed.filter((post) => {
 
