@@ -1,12 +1,17 @@
 const BASE_URL = "http://localhost:8000";
 
 // 🔹 Get posts
-export async function fetchPosts() {
-  const res = await fetch(`${BASE_URL}/history?limit=15`);
+// export async function fetchPosts() {
+//   const res = await fetch(`${BASE_URL}/history?limit=30`);
+//   const data = await res.json();
+//   return data.data;
+// }
+
+export const fetchPosts = async (limit = 15) => {
+  const res = await fetch(`${BASE_URL}/history?limit=${limit}`);
   const data = await res.json();
   return data.data;
 }
-
 // 🔹 Moderate post
 export async function moderatePost(id, action, reason = "", saved = false) {
   const res = await fetch(`${BASE_URL}/moderate`, {

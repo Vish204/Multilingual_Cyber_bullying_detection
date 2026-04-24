@@ -46,6 +46,8 @@ export default function Analysis() {
     // 4. CLEANUP: If the user leaves this page, stop the timer
     // This is crucial to prevent memory leaks and background crashes!
     return () => clearInterval(interval);
+
+    
   }, []); // Still empty brackets because we only set up the timer ONCE
 
 

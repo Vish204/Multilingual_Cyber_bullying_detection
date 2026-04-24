@@ -33,7 +33,7 @@ export default function RecentAlerts() {
   return (
     <div className="alerts-section">
       <div className="section-header-flex">
-        <h2 className="section-title">Critical Test Alerts</h2>
+        <h2 className="section-title">Critical Alerts, Not Reviewed Yet</h2>
         {/* <span className="view-all-link" onClick={() => { console.log("🚨 DASHBOARD CLICK FIRED! Alert ID:", alert.id); 
           navigate(`/moderation?alertId=${alert.id}`)}}>
            Showing latest 5

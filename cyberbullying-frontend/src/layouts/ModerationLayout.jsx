@@ -91,6 +91,9 @@ export default function ModerationLayout() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("Start Stream");
 
+  //  NEW: Track how many batches we've requested!
+  const [streamCount, setStreamCount] = useState(1);
+
 //For Dashboard Page alert navigation
  const location = useLocation();
 
@@ -141,7 +144,7 @@ export default function ModerationLayout() {
     if (!isLive) {
       console.log("🧹 STREAM STARTING: Aggressively nuking old UI...");
       setSelectedPost(null);  // Instantly kill middle panel
-      setFeed([]);            // Instantly kill left panel & alert banner
+      //setFeed([]);            // Instantly kill left panel & alert banner
     }
     setIsLive(prev => !prev);
   };
@@ -534,9 +537,9 @@ const handleModeration = async (action, postId, reason = "") => {
             console.log(" 1. runStream started");
             setIsLoading(true);
 
-            //  P15: Instantly wipe the old UI (Middle Panel & Alert Banner)
-            setSelectedPost(null);
-            setFeed([]);
+            //  P15: Instantly wipe the old UI (Middle Panel & Alert Banner) -> didnt worked so added this in handleStreamToggle instead 
+            // setSelectedPost(null);
+            // setFeed([]);
 
 
             console.log(" Collecting 15 posts...");
@@ -548,14 +551,32 @@ const handleModeration = async (action, postId, reason = "") => {
 
             // Run collector & fetch
             await collectData();
-            const data = await fetchPosts();
-            console.log("RAW DATA:", data);
+
+            const fetchLimit = streamCount * 15;
+            const data = await fetchPosts(fetchLimit);
+
+            console.log(" Data arrived!", data.length, "posts");
 
             const transformed = data.map(transformPost);
 
             if (isMounted) {
-              setFeed(transformed);
+              setFeed(transformed); //shows only 15 latest UGC batch
+
+              //  P5.5 FIX: The Growing Feed (Cap at 45)
+              // setFeed(prevFeed => {
+              //   // Put the NEW posts at the top, and the OLD posts underneath
+              //   const combinedFeed = [...transformed, ...prevFeed];
+                
+              //   // Slice it so it never goes past 45 posts to prevent browser lag
+              //   return combinedFeed.slice(0, 45); 
+              // });
+
               setSelectedPost(null);
+
+              //  Increment the counter for the NEXT click (Cap it at 3 clicks/45 posts)
+              if (streamCount < 3) {
+                  setStreamCount(prev => prev + 1);
+              }
             }
 
             // Cleanup timers
@@ -768,7 +789,7 @@ const handleModeration = async (action, postId, reason = "") => {
           />
           )} */}
           {/* 🔥 FIX 3: Dynamic Left Panel State */}
-          {isLoading ? (
+          {/*{isLoading ? (
             <div className="loading-container">
               <div className="loading-spinner">⏳</div>
               <div>{loadingText}</div>
@@ -790,6 +811,34 @@ const handleModeration = async (action, postId, reason = "") => {
                 }
               }}
             />
+          )}*/}
+
+          {feed.length === 0 && !isLoading ? (
+            <div className="empty-state">
+              Click "Start Stream" to begin monitoring
+            </div>
+          ) : (
+            <div style={{ position: "relative", height: "100%" }}>
+              {isLoading && feed.length === 0 && (
+                 <div className="loading-container">
+                   <div className="loading-spinner">⏳</div>
+                   <div>{loadingText}</div>
+                 </div>
+              )}
+              
+              <FeedList
+                key={filteredFeed.length}
+                feed={filteredFeed}
+                selectedPost={selectedPost}
+                onSelectPost={(post) => {
+                  if (selectedPost?.id === post.id) {
+                    setSelectedPost(null);
+                  } else {
+                    setSelectedPost(post);
+                  }
+                }}
+              />
+            </div>
           )}
           
         </div>
