@@ -3,5 +3,5 @@ It follows a modular, pipeline-based structure so that data collection, preproce
 
 src/
 ├── cyberbullying/     # Main project package
-├── data/              # Keyword & auxiliary data utilities
+├── data/              # Phase 1
 └── README.md
