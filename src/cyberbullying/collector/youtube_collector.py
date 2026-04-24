@@ -1,6 +1,7 @@
 import requests
 import os
 from dotenv import load_dotenv
+import random
 
 from cyberbullying.collector.cleaning_utils import clean_text
 from cyberbullying.collector.language_utils import compute_language_distribution
@@ -87,33 +88,48 @@ def fetch_youtube_comments():
 # 🔹 Targeted
 # ---------------------------
 LANGUAGE_QUERIES = {
-    "hindi": "idiot OR stupid OR bakwas OR chutiya OR pagal",
-    "marathi": "idiot OR stupid OR फालतू OR मूर्ख",
-    "tamil": "idiot OR stupid OR முட்டாள் OR மோசமான",
-    "bengali": "idiot OR stupid OR বাজে OR বোকা",
-    "gujarati": "idiot OR stupid OR બકવાસ OR મૂર્ખ",
-    "kannada": "idiot OR stupid OR ಕೆಟ್ಟ OR ದಡ್ಡ",
-    "telugu": "idiot OR stupid OR చెత్త OR మూర్ఖుడు",
-    "malayalam": "idiot OR stupid OR മോശം OR വിഡ്ഢി",
-    "punjabi": "idiot OR stupid OR ਬਕਵਾਸ OR ਮੂਰਖ",
-    "urdu": "idiot OR stupid OR بکواس OR پاگل"
+    "hindi": "  bakwas OR chutiya OR pagal",
+    "marathi": "  फालतू OR मूर्ख",
+    "tamil": "  முட்டாள் OR மோசமான",
+    "bengali": "  বাজে OR বোকা",
+    "gujarati": "  બકવાસ OR મૂર્ખ",
+    "kannada": "  ಕೆಟ್ಟ OR ದಡ್ಡ",
+    "telugu": "  చెత్త OR మూర్ఖుడు",
+    "malayalam": "  മോശം OR വിഡ്ഢി",
+    "punjabi": "  ਬਕਵਾਸ OR ਮੂਰਖ",
+    "urdu": "  بکواس OR پاگل"
 }
 
 
-def fetch_targeted_youtube(language):
+def fetch_targeted_youtube(language, limit=3):
 
     query = LANGUAGE_QUERIES.get(language)
     if not query:
         return []
 
     data = []
+#Earlier 
+    # video_ids = fetch_videos(query)
 
-    video_ids = fetch_videos(query)
+    # for vid in video_ids:
+    #     data.extend(fetch_comments(vid))
+
+    # return data
+
+#  PAGINATION FIX: Fetch 15 videos, shuffle them, and dig for comments
+    video_ids = fetch_videos(query, max_results=15)
+    random.shuffle(video_ids)
 
     for vid in video_ids:
-        data.extend(fetch_comments(vid))
+        # Get comments from this random video
+        comments = fetch_comments(vid, limit=5)
+        data.extend(comments)
+        
+        # Stop digging once we hit our limit of 3!
+        if len(data) >= limit:
+            break
 
-    return data
+    return data[:limit]
 
 
 

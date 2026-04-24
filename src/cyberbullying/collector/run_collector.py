@@ -71,7 +71,7 @@ def fetch_all_platforms():
         target_langs = ["hindi", "marathi", "tamil", "bengali", "gujarati"]
         for lang in target_langs:
             data.extend(fetch_targeted_reddit(lang, limit=3))
-            data.extend(fetch_targeted_youtube(lang))
+            data.extend(fetch_targeted_youtube(lang, limit=3))
             if os.getenv("ENABLE_TWITTER") == "true":
                 try:
                     data.extend(fetch_targeted_tweets(lang, limit=3))

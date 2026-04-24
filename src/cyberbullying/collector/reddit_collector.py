@@ -3,6 +3,7 @@ import requests
 import os
 from dotenv import load_dotenv
 import datetime
+import random
 
 from cyberbullying.collector.cleaning_utils import clean_text
 from cyberbullying.collector.language_utils import compute_language_distribution
@@ -77,16 +78,16 @@ def fetch_reddit_comments(post_limit=3, comment_limit=3):
 # 🔹 Targeted (Multilingual)
 # ---------------------------
 LANGUAGE_QUERIES = {
-    "hindi": "idiot OR stupid OR bakwas OR chutiya OR pagal",
-    "marathi": "idiot OR stupid OR फालतू OR मूर्ख",
-    "tamil": "idiot OR stupid OR முட்டாள் OR மோசமான",
-    "bengali": "idiot OR stupid OR বাজে OR বোকা",
-    "gujarati": "idiot OR stupid OR બકવાસ OR મૂર્ખ",
-    "kannada": "idiot OR stupid OR ಕೆಟ್ಟ OR ದಡ್ಡ",
-    "telugu": "idiot OR stupid OR చెత్త OR మూర్ఖుడు",
-    "malayalam": "idiot OR stupid OR മോശം OR വിഡ്ഢി",
-    "punjabi": "idiot OR stupid OR ਬਕਵਾਸ OR ਮੂਰਖ",
-    "urdu": "idiot OR stupid OR بکواس OR پاگل"
+    "hindi": "  bakwas OR chutiya OR pagal",
+    "marathi": "  फालतू OR मूर्ख",
+    "tamil": "  முட்டாள் OR மோசமான",
+    "bengali": "  বাজে OR বোকা",
+    "gujarati": "  બકવાસ OR મૂર્ખ",
+    "kannada": "  ಕೆಟ್ಟ OR ದಡ್ಡ",
+    "telugu": "  చెత్త OR మూర్ఖుడు",
+    "malayalam": "  മോശം OR വിഡ്ഢി",
+    "punjabi": "  ਬਕਵਾਸ OR ਮੂਰਖ",
+    "urdu": "  بکواس OR پاگل"
 }
 
 
@@ -99,13 +100,16 @@ def fetch_targeted_reddit(language, limit=3):
     data = []
     subreddit = reddit.subreddit("all")
 
-    for post in subreddit.search(query, limit=limit):
+    post_pool = list(subreddit.search(query, limit=30))
+    random.shuffle(post_pool)
 
+    # for post in subreddit.search(query, limit=limit):
+    for post in post_pool[:limit]:
         text = clean_text((post.title or "") + " " + (post.selftext or ""))
 
         if text:
             data.append({
-                "platform_post_id": f"t3_{post.id}", # 🔥 FIXED
+                "platform_post_id": f"t3_{post.id}", #  FIXED
                 "platform_time": datetime.datetime.fromtimestamp(post.created_utc, tz=datetime.timezone.utc).isoformat(), # 🔥 FIXED
                 "text": text,
                 "platform": "reddit",
