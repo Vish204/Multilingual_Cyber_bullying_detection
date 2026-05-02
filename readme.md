@@ -1,6 +1,3 @@
--Here is your **clean, properly formatted, copy-paste ready ROOT README** (no formatting issues, GitHub-safe) 👇
-
-````md id="r9x4kp"
 # Real-Time Multilingual Emotion-Aware Cyberbullying Detection System
 
 This repository implements a **production-grade, multilingual cyberbullying detection system** utilizing:
